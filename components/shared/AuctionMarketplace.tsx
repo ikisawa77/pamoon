@@ -91,6 +91,39 @@ interface FiltersState {
   maxPrice: string;
 }
 
+interface TopUpResponse {
+  ok: boolean;
+  user?: {
+    walletBalanceCents: number;
+    bidLimitCents: number;
+  };
+  error?: {
+    message: string;
+  };
+}
+
+interface BidResponse {
+  ok: boolean;
+  product?: {
+    id?: string;
+    currentPriceCents: number;
+    nextBidCents: number;
+  };
+  error?: {
+    message: string;
+  };
+}
+
+interface CreateProductResponse {
+  ok: boolean;
+  product?: {
+    id: string;
+  };
+  error?: {
+    message: string;
+  };
+}
+
 const currencyFormatter = new Intl.NumberFormat("th-TH", {
   style: "currency",
   currency: "THB",
@@ -187,7 +220,7 @@ const AuctionMarketplace = ({ initialData }: AuctionMarketplaceProps) => {
   const endingProducts = filteredProducts.filter((product) => product.mode === "auction" && !product.hot).slice(0, 4);
   const hotProducts = filteredProducts.filter((product) => product.hot || product.mode === "buy").slice(0, 20);
 
-  const handleProductAction = (product: AuctionProduct) => {
+  const handleProductAction = async (product: AuctionProduct) => {
     if (product.mode === "buy") {
       if (wallet.balance < product.currentPrice) {
         setNotice(`ยอดเงินไม่พอสำหรับซื้อ ${product.title}`);
@@ -207,31 +240,105 @@ const AuctionMarketplace = ({ initialData }: AuctionMarketplaceProps) => {
       return;
     }
 
-    setProducts((current) =>
-      current.map((item) =>
-        item.id === product.id
-          ? {
-              ...item,
-              currentPrice: product.nextBid,
-              nextBid: product.nextBid + Math.max(250, Math.round(product.nextBid * 0.04 / 100) * 100),
-              topBidder: "CardHunter",
-            }
-          : item,
-      ),
-    );
+    if (initialData.currentUserId) {
+      try {
+        const response = await fetch("/api/bids", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            productId: product.id,
+            bidderId: initialData.currentUserId,
+            amountCents: product.nextBid * 100,
+          }),
+        });
+        const result = (await response.json()) as BidResponse;
+
+        if (!response.ok || !result.ok || !result.product) {
+          setNotice(result.error?.message ?? "เสนอราคาไม่สำเร็จ");
+          return;
+        }
+
+        const updatedProduct = result.product;
+
+        setProducts((current) =>
+          current.map((item) =>
+            item.id === product.id
+              ? {
+                  ...item,
+                  currentPrice: Math.round(updatedProduct.currentPriceCents / 100),
+                  nextBid: Math.round(updatedProduct.nextBidCents / 100),
+                  topBidder: "Demo Member",
+                }
+              : item,
+          ),
+        );
+      } catch {
+        setNotice("เชื่อมต่อ API เสนอราคาไม่ได้");
+        return;
+      }
+    } else {
+      setProducts((current) =>
+        current.map((item) =>
+          item.id === product.id
+            ? {
+                ...item,
+                currentPrice: product.nextBid,
+                nextBid: product.nextBid + Math.max(250, Math.round(product.nextBid * 0.04 / 100) * 100),
+                topBidder: "CardHunter",
+              }
+            : item,
+        ),
+      );
+    }
+
     setWallet((current) => ({ ...current, bidLimit: Math.max(0, current.bidLimit - product.nextBid) }));
     addActivity("เสนอราคา", `${product.title} ${formatMoney(product.nextBid, true)}`);
     setNotice(`ใส่ราคาแล้ว: ${product.title} ราคาปัจจุบัน ${formatMoney(product.nextBid, true)}`);
   };
 
-  const handleTopUp = () => {
+  const handleTopUp = async () => {
     const parsed = topUpSchema.safeParse({ amount: topUpAmount });
     if (!parsed.success) {
       setNotice("กรุณาระบุจำนวนเติมเงินตั้งแต่ ฿100 ถึง ฿50,000");
       return;
     }
 
-    setWallet((current) => ({ ...current, balance: current.balance + parsed.data.amount }));
+    if (initialData.currentUserId) {
+      try {
+        const response = await fetch("/api/wallet/top-up", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: initialData.currentUserId,
+            amountCents: parsed.data.amount * 100,
+          }),
+        });
+        const result = (await response.json()) as TopUpResponse;
+
+        if (!response.ok || !result.ok || !result.user) {
+          setNotice(result.error?.message ?? "เติมเงินไม่สำเร็จ");
+          return;
+        }
+
+        const updatedUser = result.user;
+
+        setWallet((current) => ({
+          ...current,
+          balance: Math.round(updatedUser.walletBalanceCents / 100),
+          bidLimit: Math.round(updatedUser.bidLimitCents / 100),
+        }));
+      } catch {
+        setNotice("เชื่อมต่อ API เติมเงินไม่ได้");
+        return;
+      }
+    } else {
+      setWallet((current) => ({ ...current, balance: current.balance + parsed.data.amount }));
+    }
+
     addActivity("เติมเงิน", `เพิ่มยอด ${formatMoney(parsed.data.amount, true)}`);
     setNotice(`เติมเงินสำเร็จ: ยอดคงเหลือใหม่ ${formatMoney(wallet.balance + parsed.data.amount)}`);
     setTopUpOpen(false);
@@ -255,7 +362,7 @@ const AuctionMarketplace = ({ initialData }: AuctionMarketplaceProps) => {
     setShopOpen(false);
   };
 
-  const handleCreateListing = (formData: FormData) => {
+  const handleCreateListing = async (formData: FormData) => {
     const parsed = listingSchema.safeParse({
       mode: listingMode,
       category: formData.get("category"),
@@ -276,8 +383,36 @@ const AuctionMarketplace = ({ initialData }: AuctionMarketplaceProps) => {
 
     const listing = parsed.data;
     const price = listing.mode === "auction" ? listing.openingPrice : listing.buyNowPrice;
+    let createdProductId = `listing-${Date.now()}`;
+
+    if (initialData.primaryShopId) {
+      try {
+        const response = await fetch("/api/products", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ...listing,
+            sellerShopId: initialData.primaryShopId,
+          }),
+        });
+        const result = (await response.json()) as CreateProductResponse;
+
+        if (!response.ok || !result.ok || !result.product) {
+          setNotice(result.error?.message ?? "ลงสินค้าไม่สำเร็จ");
+          return;
+        }
+
+        createdProductId = result.product.id;
+      } catch {
+        setNotice("เชื่อมต่อ API ลงสินค้าไม่ได้");
+        return;
+      }
+    }
+
     const newProduct: AuctionProduct = {
-      id: `listing-${Date.now()}`,
+      id: createdProductId,
       title: listing.title,
       code: `${listing.series} ${listing.code}`,
       seller: "CardHunter Shop",
@@ -641,7 +776,7 @@ const SectionHeading = ({ title, count, hot = false }: SectionHeadingProps) => (
 interface AuctionCardProps {
   product: AuctionProduct;
   size: "feature" | "compact";
-  onAction: (product: AuctionProduct) => void;
+  onAction: (product: AuctionProduct) => void | Promise<void>;
 }
 
 const AuctionCard = ({ product, size, onAction }: AuctionCardProps) => (
@@ -872,7 +1007,7 @@ interface ListingSheetProps {
   mode: ListingMode;
   onModeChange: (mode: ListingMode) => void;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (formData: FormData) => void;
+  onSubmit: (formData: FormData) => void | Promise<void>;
 }
 
 const ListingSheet = ({ open, mode, onModeChange, onOpenChange, onSubmit }: ListingSheetProps) => (

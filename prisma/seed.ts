@@ -1,10 +1,11 @@
 import "dotenv/config";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { hash } from "bcryptjs";
 import { PrismaClient } from "../lib/generated/prisma/client";
 import { initialMarketplace } from "../lib/mock-data";
 import type { ListingMode, ProductCategory } from "../types/marketplace";
 
-const databaseUrl = process.env.DATABASE_URL ?? "mysql://root:password@localhost:3306/pamoon";
+const databaseUrl = process.env.DATABASE_URL ?? "mysql://root:password@127.0.0.1:3306/pamoon";
 
 const parseMariaDbUrl = (url: string) => {
   const parsed = new URL(url);
@@ -46,6 +47,16 @@ const shopSeeds = [
   },
 ];
 
+const getRequiredEnv = (key: string) => {
+  const value = process.env[key];
+
+  if (!value) {
+    throw new Error(`${key} is required for seeding.`);
+  }
+
+  return value;
+};
+
 const main = async () => {
   await prisma.order.deleteMany();
   await prisma.bid.deleteMany();
@@ -54,11 +65,26 @@ const main = async () => {
   await prisma.shop.deleteMany();
   await prisma.user.deleteMany();
 
+  const adminPasswordHash = await hash(getRequiredEnv("ADMIN_PASSWORD"), 12);
+
+  await prisma.user.create({
+    data: {
+      email: getRequiredEnv("ADMIN_EMAIL"),
+      displayName: "Pamoon Admin",
+      passwordHash: adminPasswordHash,
+      role: "ADMIN",
+      status: "ACTIVE",
+      walletBalanceCents: 0,
+      bidLimitCents: 0,
+    },
+  });
+
   const member = await prisma.user.create({
     data: {
       email: "member@example.local",
       displayName: "Demo Member",
       role: "MEMBER",
+      status: "ACTIVE",
       walletBalanceCents: 245000,
       bidLimitCents: 1000000,
     },
@@ -83,6 +109,7 @@ const main = async () => {
         email: shopSeed.ownerEmail,
         displayName: shopSeed.ownerName,
         role: "SHOP",
+        status: "ACTIVE",
         walletBalanceCents: 0,
         bidLimitCents: 0,
       },
@@ -113,13 +140,14 @@ const main = async () => {
       }
 
       const currentPriceCents = product.currentPrice * 100;
+      const [cardCode, setName] = product.code.split(" · ");
 
       return {
         sellerShopId,
         title: product.title,
-        cardCode: product.code.split(" · ")[0] ?? product.code,
+        cardCode: cardCode ?? product.code,
         setCode: product.code.split("-")[0] ?? "OP01",
-        setName: product.code.split(" · ")[1] ?? product.category.toUpperCase(),
+        setName: setName ?? product.category.toUpperCase(),
         category: categoryToDb(product.category),
         rarity: product.rarity,
         mode: modeToDb(product.mode),
@@ -137,7 +165,7 @@ const main = async () => {
     }),
   });
 
-  console.log("Seed completed: users, shops, wallet transaction, and 160 products created.");
+  console.log("Seed completed: admin, users, shops, wallet transaction, and 160 products created.");
 };
 
 main()
@@ -148,4 +176,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-

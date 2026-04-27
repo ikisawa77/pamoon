@@ -1,7 +1,10 @@
 import { AuctionMarketplace } from "@/components/shared/AuctionMarketplace";
-import { initialMarketplace } from "@/lib/mock-data";
+import { getMarketplaceSnapshot } from "@/lib/data/marketplace";
 
-const HomePage = () => <AuctionMarketplace initialData={initialMarketplace} />;
+const HomePage = async () => {
+  const marketplace = await getMarketplaceSnapshot();
+
+  return <AuctionMarketplace initialData={marketplace} />;
+};
 
 export default HomePage;
-

@@ -39,4 +39,6 @@ export interface MarketplaceSnapshot {
   wallet: WalletSummary;
   products: AuctionProduct[];
   activities: ActivityItem[];
+  currentUserId?: string;
+  primaryShopId?: string;
 }

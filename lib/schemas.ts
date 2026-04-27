@@ -41,9 +41,15 @@ export const topUpApiSchema = z.object({
   amountCents: z.coerce.number().int().min(100),
 });
 
+export const loginSchema = z.object({
+  email: z.string().email().max(191),
+  password: z.string().min(1).max(128),
+});
+
 export type TopUpInput = z.infer<typeof topUpSchema>;
 export type ShopRegistrationInput = z.infer<typeof shopRegistrationSchema>;
 export type ListingInput = z.infer<typeof listingSchema>;
 export type CreateProductApiInput = z.infer<typeof createProductApiSchema>;
 export type CreateBidApiInput = z.infer<typeof createBidApiSchema>;
 export type TopUpApiInput = z.infer<typeof topUpApiSchema>;
+export type LoginInput = z.infer<typeof loginSchema>;
