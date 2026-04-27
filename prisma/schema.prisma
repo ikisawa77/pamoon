@@ -1,0 +1,217 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum UserRole {
+  MEMBER
+  SHOP
+  ADMIN
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING_REVIEW
+}
+
+enum ShopStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum ListingMode {
+  AUCTION
+  BUY
+}
+
+enum ProductCategory {
+  OP01
+  OP02
+  OP03
+  OP04
+  OP05
+}
+
+enum ProductRarity {
+  C
+  UC
+  R
+  L
+  SR
+  SEC
+  SP
+  P
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  SOLD
+  ENDED
+  REMOVED
+}
+
+enum BidStatus {
+  ACTIVE
+  OUTBID
+  WINNING
+  CANCELLED
+}
+
+enum WalletTransactionType {
+  TOP_UP
+  BID_HOLD
+  BID_RELEASE
+  PURCHASE
+  SELLER_PAYOUT
+  REFUND
+}
+
+enum WalletTransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  SHIPPED
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+model User {
+  id                 String              @id @default(cuid())
+  email              String              @unique @db.VarChar(191)
+  displayName        String              @db.VarChar(120)
+  passwordHash       String?             @db.VarChar(255)
+  role               UserRole            @default(MEMBER)
+  status             AccountStatus       @default(ACTIVE)
+  walletBalanceCents Int                 @default(0)
+  bidLimitCents      Int                 @default(0)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  shops              Shop[]
+  bids               Bid[]
+  walletTransactions WalletTransaction[]
+  orders             Order[]
+
+  @@index([role])
+  @@index([status])
+}
+
+model Shop {
+  id          String     @id @default(cuid())
+  ownerId     String
+  name        String     @unique @db.VarChar(120)
+  slug        String     @unique @db.VarChar(120)
+  status      ShopStatus @default(PENDING)
+  rating      Float      @default(0)
+  reviewCount Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  owner       User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  products    Product[]
+  orders      Order[]
+
+  @@index([ownerId])
+  @@index([status])
+}
+
+model Product {
+  id                 String          @id @default(cuid())
+  sellerShopId       String
+  title              String          @db.VarChar(160)
+  cardCode           String          @db.VarChar(80)
+  setCode            String          @db.VarChar(40)
+  setName            String          @db.VarChar(120)
+  category           ProductCategory
+  rarity             ProductRarity
+  mode               ListingMode
+  status             ProductStatus   @default(ACTIVE)
+  conditionLabel     String          @db.VarChar(60)
+  description        String?         @db.Text
+  imageUrl           String?         @db.VarChar(255)
+  openingPriceCents  Int
+  currentPriceCents  Int
+  nextBidCents       Int
+  buyNowPriceCents   Int?
+  watcherCount       Int             @default(0)
+  auctionEndsAt      DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  sellerShop         Shop            @relation(fields: [sellerShopId], references: [id], onDelete: Cascade)
+  bids               Bid[]
+  order              Order?
+
+  @@index([sellerShopId])
+  @@index([mode, status])
+  @@index([category])
+  @@index([rarity])
+  @@index([auctionEndsAt])
+}
+
+model Bid {
+  id          String    @id @default(cuid())
+  productId   String
+  bidderId    String
+  amountCents Int
+  status      BidStatus @default(ACTIVE)
+  createdAt   DateTime  @default(now())
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  bidder      User      @relation(fields: [bidderId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([bidderId])
+  @@index([status])
+}
+
+model WalletTransaction {
+  id            String                  @id @default(cuid())
+  userId        String
+  type          WalletTransactionType
+  status        WalletTransactionStatus @default(PENDING)
+  amountCents   Int
+  referenceType String?                 @db.VarChar(60)
+  referenceId   String?                 @db.VarChar(191)
+  note          String?                 @db.VarChar(255)
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+  user          User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type, status])
+  @@index([referenceType, referenceId])
+}
+
+model Order {
+  id                 String      @id @default(cuid())
+  productId          String      @unique
+  buyerId            String
+  sellerShopId       String
+  amountCents        Int
+  platformFeeCents   Int         @default(0)
+  status             OrderStatus @default(PENDING_PAYMENT)
+  shippingName       String?     @db.VarChar(120)
+  shippingAddress    String?     @db.Text
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  product            Product     @relation(fields: [productId], references: [id], onDelete: Restrict)
+  buyer              User        @relation(fields: [buyerId], references: [id], onDelete: Restrict)
+  sellerShop         Shop        @relation(fields: [sellerShopId], references: [id], onDelete: Restrict)
+
+  @@index([buyerId])
+  @@index([sellerShopId])
+  @@index([status])
+}
+

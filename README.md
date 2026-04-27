@@ -16,6 +16,10 @@ Pamoon คือเว็บประมูลและซื้อขายก�
 - ทำ flow สมัครร้านค้าแบบ mock
 - ทำ drawer ลงสินค้าแบบ step form พร้อม validation ด้วย Zod
 - เพิ่มข้อมูลตัวอย่างตามแนว filter ของ `data-cardgame.com` โดยมี 3 ร้านค้า, รายการซื้อเลย 80 ใบ, รายการประมูล 80 ใบ และครอบคลุม RARITY `C`, `UC`, `R`, `L`, `SR`, `SEC`, `SP`, `P`
+- เริ่มระบบหลังบ้านด้วย Prisma 7 + MariaDB adapter สำหรับเชื่อมฐานข้อมูล MySQL/MariaDB
+- เพิ่ม database schema สำหรับสมาชิก ร้านค้า สินค้า ประมูล bid wallet transaction และ order
+- เพิ่ม API routes ชุดแรกสำหรับ health check, shops, products, bids และ wallet top-up
+- เพิ่ม seed script สำหรับสร้างสมาชิกตัวอย่าง ร้านค้า 3 ร้าน และสินค้า 160 ใบลงฐานข้อมูลจริง
 - แยกโครงสร้างไฟล์ตามมาตรฐาน `/app`, `/components/ui`, `/components/shared`, `/lib`, `/types`
 - เพิ่ม `.env.example` สำหรับเตรียมต่อฐานข้อมูล ระบบ auth และ payment provider ในขั้นถัดไป
 - เพิ่มเอกสาร deploy สำหรับ NokHosting Node.js Hosting
@@ -25,13 +29,14 @@ Pamoon คือเว็บประมูลและซื้อขายก�
 - สถานะปัจจุบันเป็น frontend prototype ที่พร้อมรันใน Next.js แล้ว
 - ข้อมูลสินค้า 160 ใบ กระเป๋าเงิน ร้านค้า 3 ร้าน และรายการล่าสุดยังเป็น mock data ใน `lib/mock-data.ts`
 - การเติมเงิน เสนอราคา สมัครร้านค้า และลงสินค้าเป็น local state ยังไม่ได้เชื่อม backend จริง
+- ฝั่ง backend มี Prisma schema และ API routes แล้ว แต่ยังต้องตั้งค่า `DATABASE_URL` และรัน `npm run db:push` ก่อนใช้งานฐานข้อมูลจริง
 - ผ่านการตรวจ `npm run lint`, `npm run typecheck` และ `npm run build`
 - ตั้งค่า `next.config.ts` เป็น `output: "standalone"` เพื่อเตรียม deploy บน Node.js hosting
 
 ## ต่อไปต้องทำอะไรต่อ
 
 - ออกแบบฐานข้อมูลจริงสำหรับผู้ใช้ ร้านค้า สินค้า การประมูล bid wallet ledger order และ transaction
-- เลือก ORM เช่น Prisma หรือ Drizzle แล้วเชื่อมฐานข้อมูลของ hosting หรือฐานข้อมูลภายนอก
+- เชื่อมฐานข้อมูล MariaDB/MySQL จริงบน hosting และรัน seed ข้อมูลเริ่มต้น
 - ทำระบบสมัครสมาชิกและเข้าสู่ระบบ
 - ทำ role แยกสมาชิกทั่วไป ร้านค้า และ admin
 - ทำ API routes หรือ Server Actions สำหรับลงสินค้า เสนอราคา ซื้อสินค้า เติมเงิน และถอนเงิน
@@ -51,6 +56,41 @@ npm run lint
 npm run typecheck
 npm run build
 npm start
+npm run prisma:generate
+npm run db:push
+npm run db:seed
+npm run db:studio
+```
+
+## ระบบหลังบ้าน
+
+ไฟล์สำคัญของ backend:
+
+- `prisma/schema.prisma` โครงสร้างฐานข้อมูล
+- `prisma.config.ts` config Prisma 7 และ `DATABASE_URL`
+- `prisma/seed.ts` seed ข้อมูลตัวอย่างลงฐานข้อมูล
+- `lib/db/prisma.ts` Prisma client สำหรับ Next.js runtime
+- `app/api/health/route.ts` ตรวจสอบระบบและฐานข้อมูล
+- `app/api/products/route.ts` อ่าน/สร้างสินค้า
+- `app/api/shops/route.ts` อ่านร้านค้า
+- `app/api/bids/route.ts` เสนอราคาประมูล
+- `app/api/wallet/top-up/route.ts` เติมเงินแบบ API
+
+การเริ่มใช้ฐานข้อมูลจริง:
+
+```bash
+copy .env.example .env
+# แก้ DATABASE_URL ให้เป็นฐานข้อมูล MariaDB/MySQL จริง
+npm install
+npm run db:push
+npm run db:seed
+npm run dev
+```
+
+ตัวอย่างตรวจ health:
+
+```bash
+curl http://localhost:3000/api/health
 ```
 
 ## เปิดทดสอบบนเครื่องนี้ด้วยไฟล์ .bat

@@ -47,10 +47,30 @@ PAYMENT_API_KEY=
 PAYMENT_WEBHOOK_SECRET=
 ```
 
+## Database Setup
+
+Prisma backend has been added. Before running the app in production:
+
+```bash
+npm install
+npm run prisma:generate
+npm run db:push
+npm run db:seed
+npm run build
+npm start
+```
+
+Use the MariaDB/MySQL connection string from NokHosting in `DATABASE_URL`.
+
+Example:
+
+```bash
+DATABASE_URL="mysql://USER:PASSWORD@HOST:3306/DATABASE"
+```
+
 ## Database Note
 
 The host advertises MariaDB support. For the real version, either:
 
 - use MariaDB with Prisma/Drizzle for users, shops, listings, bids, wallet ledger, and orders, or
 - use an external Postgres provider if ledger/audit requirements become more demanding.
-

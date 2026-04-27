@@ -24,6 +24,7 @@ pnpm-debug.log*
 # cache
 .turbo/
 *.tsbuildinfo
+lib/generated/prisma/
 
 # os/editor
 .DS_Store

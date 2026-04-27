@@ -24,6 +24,26 @@ export const listingSchema = z.object({
   condition: z.string().min(1).max(40),
 });
 
+export const createProductApiSchema = listingSchema.extend({
+  sellerShopId: z.string().min(1),
+  description: z.string().max(2000).optional(),
+  imageUrl: z.string().url().optional(),
+});
+
+export const createBidApiSchema = z.object({
+  productId: z.string().min(1),
+  bidderId: z.string().min(1),
+  amountCents: z.coerce.number().int().min(1),
+});
+
+export const topUpApiSchema = z.object({
+  userId: z.string().min(1),
+  amountCents: z.coerce.number().int().min(100),
+});
+
 export type TopUpInput = z.infer<typeof topUpSchema>;
 export type ShopRegistrationInput = z.infer<typeof shopRegistrationSchema>;
 export type ListingInput = z.infer<typeof listingSchema>;
+export type CreateProductApiInput = z.infer<typeof createProductApiSchema>;
+export type CreateBidApiInput = z.infer<typeof createBidApiSchema>;
+export type TopUpApiInput = z.infer<typeof topUpApiSchema>;
