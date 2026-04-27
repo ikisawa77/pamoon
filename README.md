@@ -52,6 +52,14 @@ npm run build
 npm start
 ```
 
+## เปิดทดสอบบนเครื่องนี้ด้วยไฟล์ .bat
+
+- ดับเบิลคลิก `start-localhost.bat` เพื่อเปิดระบบหน้าเว็บและฝั่ง server ของ Next.js บน `http://localhost:3000`
+- ดับเบิลคลิก `stop-localhost.bat` เพื่อปิดระบบที่รันอยู่บน port `3000`
+- logic หลักอยู่ใน `scripts/start-localhost.ps1` และ `scripts/stop-localhost.ps1` เพื่อให้ batch file สั้นและเสถียรกว่า
+- ไฟล์ log ขณะรันอยู่ที่ `.localhost.log`
+- หากยังไม่มี `node_modules` ไฟล์ `start-localhost.bat` จะรัน `npm install` ให้ก่อน
+
 ## โครงสร้างโปรเจกต์
 
 - `app/` routes, layout, global CSS และ local fonts
@@ -64,4 +72,3 @@ npm start
 ## หมายเหตุสำหรับ deploy
 
 ดูรายละเอียดใน `DEPLOYMENT.md`
-
