@@ -144,7 +144,7 @@ const AuctionMarketplace = ({ initialData }: AuctionMarketplaceProps) => {
     maxPrice: "",
   });
   const [sortMode, setSortMode] = useState<SortMode>("ending");
-  const [notice, setNotice] = useState("ประมูลใกล้จบ: Monkey D. Luffy (C) เหลือ 00:03:00 ราคาเปิดถัดไป ฿430");
+  const [notice, setNotice] = useState("ประมูลตัวอย่าง: การ์ดทุกใบหมดเวลาประมูลอีก 2 ปี วันที่ 28 เม.ย. 2028");
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
   const [listingOpen, setListingOpen] = useState(false);
@@ -290,7 +290,7 @@ const AuctionMarketplace = ({ initialData }: AuctionMarketplaceProps) => {
       currentPrice: price,
       nextBid: price + 250,
       watchers: 0,
-      endsIn: listing.duration === "30 นาที" ? "00:30:00" : "3 วัน",
+      endsIn: listing.mode === "auction" ? "เหลือ 2 ปี (หมด 28 เม.ย. 2028)" : "พร้อมส่ง",
       imagePositionClass: "object-pos-1",
       hot: false,
     };
@@ -654,7 +654,7 @@ const AuctionCard = ({ product, size, onAction }: AuctionCardProps) => (
       />
       <div className="absolute left-3 top-3 flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs font-semibold text-primary-foreground">
         <Clock3 data-icon="inline-start" />
-        {product.mode === "auction" ? `กำลังจะจบใน ${product.endsIn}` : "ซื้อเลย พร้อมส่ง"}
+        {product.mode === "auction" ? product.endsIn : "ซื้อเลย พร้อมส่ง"}
       </div>
       <Button type="button" variant="secondary" size="icon-sm" className="absolute right-3 top-3 rounded-full bg-card/90" aria-label="ติดตาม">
         <Heart />

@@ -91,6 +91,8 @@ const imagePositions = [
   "object-pos-6",
 ];
 
+const auctionEndLabel = "เหลือ 2 ปี (หมด 28 เม.ย. 2028)";
+
 const makeCardCode = (setCode: string, index: number, rarity: ProductRarity) =>
   `${setCode}-${String((index % 121) + 1).padStart(3, "0")} ${rarity}`;
 
@@ -102,7 +104,6 @@ const makeProduct = (index: number, mode: ListingMode): AuctionProduct => {
   const currentPrice = Math.round(basePrice / 10) * 10;
   const openingPrice = Math.max(50, Math.round((currentPrice * 0.72) / 10) * 10);
   const nextBid = Math.round((currentPrice + Math.max(100, currentPrice * 0.05)) / 10) * 10;
-  const minutes = 3 + (index * 7) % 57;
 
   return {
     id: `${mode}-${String(index + 1).padStart(2, "0")}`,
@@ -118,7 +119,7 @@ const makeProduct = (index: number, mode: ListingMode): AuctionProduct => {
     currentPrice,
     nextBid,
     watchers: 12 + (index * 11) % 139,
-    endsIn: mode === "auction" ? `00:${String(minutes).padStart(2, "0")}:${String((index * 13) % 60).padStart(2, "0")}` : "พร้อมส่ง",
+    endsIn: mode === "auction" ? auctionEndLabel : "พร้อมส่ง",
     imagePositionClass: imagePositions[index % imagePositions.length],
     hot: index >= 40,
   };
