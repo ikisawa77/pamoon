@@ -13,11 +13,11 @@ export const shopRegistrationSchema = z.object({
 
 export const listingSchema = z.object({
   mode: z.enum(["auction", "buy"]),
-  category: z.enum(["pokemon", "sealed", "single", "onepiece"]),
+  category: z.enum(["op01", "op02", "op03", "op04", "op05"]),
   title: z.string().min(2).max(120),
   series: z.string().min(1).max(60),
   code: z.string().min(1).max(40),
-  rarity: z.enum(["SEC", "UR", "SR", "R", "C", "SAR", "SP", "HR"]),
+  rarity: z.enum(["C", "UC", "R", "L", "SR", "SEC", "SP", "P"]),
   openingPrice: z.coerce.number().int().min(100).max(500000),
   buyNowPrice: z.coerce.number().int().min(0).max(500000),
   duration: z.string().min(1).max(40),
@@ -27,4 +27,3 @@ export const listingSchema = z.object({
 export type TopUpInput = z.infer<typeof topUpSchema>;
 export type ShopRegistrationInput = z.infer<typeof shopRegistrationSchema>;
 export type ListingInput = z.infer<typeof listingSchema>;
-

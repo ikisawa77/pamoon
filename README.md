@@ -15,6 +15,7 @@ Pamoon คือเว็บประมูลและซื้อขายก�
 - ทำ flow เสนอราคาแบบ mock พร้อมอัปเดตวงเงินประมูลและรายการล่าสุด
 - ทำ flow สมัครร้านค้าแบบ mock
 - ทำ drawer ลงสินค้าแบบ step form พร้อม validation ด้วย Zod
+- เพิ่มข้อมูลตัวอย่างตามแนว filter ของ `data-cardgame.com` โดยมี 3 ร้านค้า, รายการซื้อเลย 80 ใบ, รายการประมูล 80 ใบ และครอบคลุม RARITY `C`, `UC`, `R`, `L`, `SR`, `SEC`, `SP`, `P`
 - แยกโครงสร้างไฟล์ตามมาตรฐาน `/app`, `/components/ui`, `/components/shared`, `/lib`, `/types`
 - เพิ่ม `.env.example` สำหรับเตรียมต่อฐานข้อมูล ระบบ auth และ payment provider ในขั้นถัดไป
 - เพิ่มเอกสาร deploy สำหรับ NokHosting Node.js Hosting
@@ -22,7 +23,7 @@ Pamoon คือเว็บประมูลและซื้อขายก�
 ## ตอนนี้ทำถึงไหนแล้ว
 
 - สถานะปัจจุบันเป็น frontend prototype ที่พร้อมรันใน Next.js แล้ว
-- ข้อมูลสินค้า กระเป๋าเงิน ร้านค้า และรายการล่าสุดยังเป็น mock data ใน `lib/mock-data.ts`
+- ข้อมูลสินค้า 160 ใบ กระเป๋าเงิน ร้านค้า 3 ร้าน และรายการล่าสุดยังเป็น mock data ใน `lib/mock-data.ts`
 - การเติมเงิน เสนอราคา สมัครร้านค้า และลงสินค้าเป็น local state ยังไม่ได้เชื่อม backend จริง
 - ผ่านการตรวจ `npm run lint`, `npm run typecheck` และ `npm run build`
 - ตั้งค่า `next.config.ts` เป็น `output: "standalone"` เพื่อเตรียม deploy บน Node.js hosting

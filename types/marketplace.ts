@@ -1,14 +1,15 @@
 export type ListingMode = "auction" | "buy";
 
-export type ProductCategory = "pokemon" | "sealed" | "single" | "onepiece";
+export type ProductCategory = "op01" | "op02" | "op03" | "op04" | "op05";
 
-export type ProductRarity = "SEC" | "UR" | "SR" | "R" | "C" | "SAR" | "SP" | "HR";
+export type ProductRarity = "C" | "UC" | "R" | "L" | "SR" | "SEC" | "SP" | "P";
 
 export interface AuctionProduct {
   id: string;
   title: string;
   code: string;
   seller: string;
+  shopId: string;
   topBidder: string;
   mode: ListingMode;
   category: ProductCategory;
@@ -39,4 +40,3 @@ export interface MarketplaceSnapshot {
   products: AuctionProduct[];
   activities: ActivityItem[];
 }
-

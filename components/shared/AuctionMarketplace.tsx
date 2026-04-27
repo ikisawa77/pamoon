@@ -85,6 +85,7 @@ type SortMode = "ending" | "priceHigh" | "priceLow";
 interface FiltersState {
   saleType: ListingMode | "all";
   category: ProductCategory | "all";
+  rarity: ProductRarity | "all";
   query: string;
   minPrice: string;
   maxPrice: string;
@@ -110,13 +111,25 @@ const formatMoney = (value: number, compact = false) =>
 
 const categoryLabels: Record<ProductCategory | "all", string> = {
   all: "ทั้งหมด",
-  pokemon: "การ์ดเกม TCG",
-  sealed: "โปเกมอน",
-  single: "การ์ดยูกิ",
-  onepiece: "วันพีซ",
+  op01: "OP-01 ROMANCE DAWN",
+  op02: "OP-02 PARAMOUNT WAR",
+  op03: "OP-03 PILLARS OF STRENGTH",
+  op04: "OP-04 KINGDOMS OF INTRIGUE",
+  op05: "OP-05 AWAKENING OF THE NEW ERA",
 };
 
-const rarityOptions: ProductRarity[] = ["SEC", "UR", "SR", "R", "C", "SAR", "SP", "HR"];
+const rarityOptions: ProductRarity[] = ["C", "UC", "R", "L", "SR", "SEC", "SP", "P"];
+
+const rarityLabels: Record<ProductRarity, string> = {
+  C: "Common (C)",
+  UC: "Uncommon (UC)",
+  R: "Rare (R)",
+  L: "Leader (L)",
+  SR: "Super Rare (SR)",
+  SEC: "Secret Rare (SEC)",
+  SP: "Special Rare (SP)",
+  P: "Promo / Parallel (P)",
+};
 
 const AuctionMarketplace = ({ initialData }: AuctionMarketplaceProps) => {
   const [wallet, setWallet] = useState<WalletSummary>(initialData.wallet);
@@ -125,12 +138,13 @@ const AuctionMarketplace = ({ initialData }: AuctionMarketplaceProps) => {
   const [filters, setFilters] = useState<FiltersState>({
     saleType: "all",
     category: "all",
+    rarity: "all",
     query: "",
     minPrice: "",
     maxPrice: "",
   });
   const [sortMode, setSortMode] = useState<SortMode>("ending");
-  const [notice, setNotice] = useState("ประมูลใกล้จบ: Pikachu ex (SAR) เหลือ 00:03:28 ราคาเปิดถัดไป ฿13,000");
+  const [notice, setNotice] = useState("ประมูลใกล้จบ: Monkey D. Luffy (C) เหลือ 00:03:00 ราคาเปิดถัดไป ฿430");
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
   const [listingOpen, setListingOpen] = useState(false);
@@ -153,12 +167,13 @@ const AuctionMarketplace = ({ initialData }: AuctionMarketplaceProps) => {
       .filter((product) => {
         const saleTypeMatch = filters.saleType === "all" || product.mode === filters.saleType;
         const categoryMatch = filters.category === "all" || product.category === filters.category;
+        const rarityMatch = filters.rarity === "all" || product.rarity === filters.rarity;
         const priceMatch = product.currentPrice >= minPrice && product.currentPrice <= maxPrice;
         const queryMatch =
           !query ||
           `${product.title} ${product.code} ${product.seller}`.toLowerCase().includes(query);
 
-        return saleTypeMatch && categoryMatch && priceMatch && queryMatch;
+        return saleTypeMatch && categoryMatch && rarityMatch && priceMatch && queryMatch;
       })
       .sort((left, right) => {
         if (sortMode === "priceHigh") return right.currentPrice - left.currentPrice;
@@ -167,10 +182,25 @@ const AuctionMarketplace = ({ initialData }: AuctionMarketplaceProps) => {
       });
   }, [filters, products, sortMode]);
 
-  const endingProducts = filteredProducts.filter((product) => !product.hot).slice(0, 4);
-  const hotProducts = filteredProducts.filter((product) => product.hot);
+  const auctionTotal = products.filter((product) => product.mode === "auction").length;
+  const buyTotal = products.filter((product) => product.mode === "buy").length;
+  const endingProducts = filteredProducts.filter((product) => product.mode === "auction" && !product.hot).slice(0, 4);
+  const hotProducts = filteredProducts.filter((product) => product.hot || product.mode === "buy").slice(0, 20);
 
-  const handleBid = (product: AuctionProduct) => {
+  const handleProductAction = (product: AuctionProduct) => {
+    if (product.mode === "buy") {
+      if (wallet.balance < product.currentPrice) {
+        setNotice(`ยอดเงินไม่พอสำหรับซื้อ ${product.title}`);
+        setTopUpOpen(true);
+        return;
+      }
+
+      setWallet((current) => ({ ...current, balance: current.balance - product.currentPrice }));
+      addActivity("ซื้อสินค้า", `${product.title} ${formatMoney(product.currentPrice, true)}`);
+      setNotice(`ซื้อสำเร็จ: ${product.title} จาก ${product.seller}`);
+      return;
+    }
+
     if (wallet.balance + wallet.bidLimit < product.nextBid) {
       setNotice(`ยอดเงินหรือวงเงินประมูลไม่พอสำหรับ ${product.title}`);
       setTopUpOpen(true);
@@ -251,6 +281,7 @@ const AuctionMarketplace = ({ initialData }: AuctionMarketplaceProps) => {
       title: listing.title,
       code: `${listing.series} ${listing.code}`,
       seller: "CardHunter Shop",
+      shopId: "cardhunter",
       topBidder: "รอผู้เสนอราคา",
       mode: listing.mode,
       category: listing.category,
@@ -271,7 +302,7 @@ const AuctionMarketplace = ({ initialData }: AuctionMarketplaceProps) => {
   };
 
   const clearFilters = () => {
-    setFilters({ saleType: "all", category: "all", query: "", minPrice: "", maxPrice: "" });
+    setFilters({ saleType: "all", category: "all", rarity: "all", query: "", minPrice: "", maxPrice: "" });
   };
 
   return (
@@ -296,13 +327,14 @@ const AuctionMarketplace = ({ initialData }: AuctionMarketplaceProps) => {
 
           <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary">
             <span className="font-semibold">{notice}</span>
+            <span className="ml-2 text-muted-foreground">ตัวอย่าง: 3 ร้านค้า / ลงขาย {buyTotal} ใบ / ลงประมูล {auctionTotal} ใบ / ครบ {rarityOptions.length} rarity</span>
           </div>
 
           <section className="flex flex-col gap-4">
             <SectionHeading title="ประมูลใกล้จบ" count={endingProducts.length + 20} />
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-4">
               {endingProducts.map((product) => (
-                <AuctionCard key={product.id} product={product} size="feature" onBid={handleBid} />
+                <AuctionCard key={product.id} product={product} size="feature" onAction={handleProductAction} />
               ))}
             </div>
           </section>
@@ -311,7 +343,7 @@ const AuctionMarketplace = ({ initialData }: AuctionMarketplaceProps) => {
             <SectionHeading title="ประมูลกำลังมาแรง" hot />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
               {hotProducts.map((product) => (
-                <AuctionCard key={product.id} product={product} size="compact" onBid={handleBid} />
+                <AuctionCard key={product.id} product={product} size="compact" onAction={handleProductAction} />
               ))}
             </div>
           </section>
@@ -457,17 +489,17 @@ const FilterSidebar = ({ filters, onChange, onClear }: FilterSidebarProps) => (
       </RadioGroup>
     </FilterBlock>
 
-    <FilterBlock title="หมวดหมู่การ์ด">
+    <FilterBlock title="SET">
       <RadioGroup
         value={filters.category}
         onValueChange={(value) => onChange({ ...filters, category: value as ProductCategory | "all" })}
         className="flex flex-col gap-3"
       >
-        {(["all", "pokemon", "sealed", "single", "onepiece"] as const).map((value, index) => (
+        {(["all", "op01", "op02", "op03", "op04", "op05"] as const).map((value, index) => (
           <label key={value} className="flex items-center gap-2 text-sm">
             <RadioGroupItem value={value} />
             <span className="flex-1">{categoryLabels[value]}</span>
-            {index > 0 && <span className="text-xs text-muted-foreground">{[1245, 862, 532, 312][index - 1]}</span>}
+            {index > 0 && <span className="text-xs text-muted-foreground">{[32, 32, 32, 32, 32][index - 1]}</span>}
           </label>
         ))}
       </RadioGroup>
@@ -476,12 +508,12 @@ const FilterSidebar = ({ filters, onChange, onClear }: FilterSidebarProps) => (
       </Button>
     </FilterBlock>
 
-    <FilterBlock title="ซีรีส์">
+    <FilterBlock title="NAME / CARD ID">
       <div className="relative">
         <Search className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <Input placeholder="ค้นหาซีรีส์" className="pr-10" />
       </div>
-      {["Pokémon Scarlet & Violet", "Pokémon Sword & Shield", "Yu-Gi-Oh! Quarter Century", "One Piece OP-05"].map((label, index) => (
+      {["OP-01 ROMANCE DAWN", "OP-02 PARAMOUNT WAR", "OP-03 PILLARS OF STRENGTH", "OP-05 AWAKENING"].map((label, index) => (
         <label key={label} className="flex items-center gap-2 text-sm">
           <Checkbox />
           <span className="flex-1">{label}</span>
@@ -491,12 +523,23 @@ const FilterSidebar = ({ filters, onChange, onClear }: FilterSidebarProps) => (
     </FilterBlock>
 
     <FilterBlock title="ระดับความหายาก">
-      {["Secret Rare (SEC)", "Ultra Rare (UR)", "Super Rare (SR)", "Rare (R)", "Common (C)"].map((label) => (
-        <label key={label} className="flex items-center gap-2 text-sm">
-          <Checkbox />
-          {label}
+      <RadioGroup
+        value={filters.rarity}
+        onValueChange={(value) => onChange({ ...filters, rarity: value as ProductRarity | "all" })}
+        className="flex flex-col gap-3"
+      >
+        <label className="flex items-center gap-2 text-sm">
+          <RadioGroupItem value="all" />
+          ทั้งหมด
         </label>
-      ))}
+        {rarityOptions.map((rarity) => (
+          <label key={rarity} className="flex items-center gap-2 text-sm">
+            <RadioGroupItem value={rarity} />
+            <span className="flex-1">{rarityLabels[rarity]}</span>
+            <span className="text-xs text-muted-foreground">20</span>
+          </label>
+        ))}
+      </RadioGroup>
     </FilterBlock>
 
     <FilterBlock title="ช่วงราคา (฿)">
@@ -598,10 +641,10 @@ const SectionHeading = ({ title, count, hot = false }: SectionHeadingProps) => (
 interface AuctionCardProps {
   product: AuctionProduct;
   size: "feature" | "compact";
-  onBid: (product: AuctionProduct) => void;
+  onAction: (product: AuctionProduct) => void;
 }
 
-const AuctionCard = ({ product, size, onBid }: AuctionCardProps) => (
+const AuctionCard = ({ product, size, onAction }: AuctionCardProps) => (
   <Card className="overflow-hidden rounded-lg p-0 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
     <div className={cn("relative bg-muted", size === "feature" ? "aspect-[4/3]" : "aspect-[3/3.4]")}>
       <div
@@ -611,13 +654,13 @@ const AuctionCard = ({ product, size, onBid }: AuctionCardProps) => (
       />
       <div className="absolute left-3 top-3 flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs font-semibold text-primary-foreground">
         <Clock3 data-icon="inline-start" />
-        กำลังจะจบใน {product.endsIn}
+        {product.mode === "auction" ? `กำลังจะจบใน ${product.endsIn}` : "ซื้อเลย พร้อมส่ง"}
       </div>
       <Button type="button" variant="secondary" size="icon-sm" className="absolute right-3 top-3 rounded-full bg-card/90" aria-label="ติดตาม">
         <Heart />
       </Button>
       <div className="absolute bottom-3 left-3 flex items-center gap-2">
-        {product.rarity === "SAR" && <Badge className="bg-bid text-bid-foreground">จุดนิยม</Badge>}
+        {(product.rarity === "SEC" || product.rarity === "SP" || product.rarity === "P") && <Badge className="bg-bid text-bid-foreground">จุดนิยม</Badge>}
         <Badge variant="secondary" className="bg-foreground/80 text-background">
           <Eye data-icon="inline-start" />
           {product.watchers}
@@ -638,7 +681,7 @@ const AuctionCard = ({ product, size, onBid }: AuctionCardProps) => (
         <div className="grid grid-cols-2 gap-3 border-t pt-3 text-sm">
           <PriceMetric label="ราคาเปิด" value={formatMoney(product.openingPrice, true)} />
           <PriceMetric label="ราคาปัจจุบัน" value={formatMoney(product.currentPrice, true)} strong />
-          <PriceMetric label="ผู้เสนอสูงสุด" value={product.topBidder} />
+          <PriceMetric label={product.mode === "auction" ? "ผู้เสนอสูงสุด" : "ร้านค้า"} value={product.mode === "auction" ? product.topBidder : product.seller} />
         </div>
       ) : (
         <div className="flex items-end justify-between gap-2">
@@ -649,8 +692,8 @@ const AuctionCard = ({ product, size, onBid }: AuctionCardProps) => (
     </CardContent>
     {size === "feature" && (
       <CardFooter className="px-4 pb-4">
-        <Button type="button" className="w-full bg-bid text-white hover:bg-bid/90" onClick={() => onBid(product)}>
-          เสนอราคา
+        <Button type="button" className="w-full bg-bid text-white hover:bg-bid/90" onClick={() => onAction(product)}>
+          {product.mode === "auction" ? "เสนอราคา" : "ซื้อเลย"}
         </Button>
       </CardFooter>
     )}
@@ -710,19 +753,29 @@ const RightPanel = ({ wallet, activities, onOpenTopUp, onOpenShop, onOpenListing
 
     <Card>
       <CardHeader>
-        <CardTitle>ร้านค้าของฉัน</CardTitle>
+        <CardTitle>ตัวอย่างร้านค้า 3 ร้าน</CardTitle>
       </CardHeader>
-      <CardContent className="flex items-center gap-3">
-        <Avatar className="size-12">
-          <AvatarFallback>CH</AvatarFallback>
-        </Avatar>
-        <div className="min-w-0 flex-1">
-          <strong className="block truncate">CardHunter Shop</strong>
-          <span className="text-sm text-muted-foreground">คะแนนร้านค้า 4.9 ★ (128)</span>
+      <CardContent className="flex flex-col gap-3">
+        {[
+          ["CH", "CardHunter Shop", "ลงขาย 27 ใบ / ประมูล 27 ใบ"],
+          ["GL", "Grand Line Cards", "ลงขาย 27 ใบ / ประมูล 27 ใบ"],
+          ["RD", "Romance Dawn Vault", "ลงขาย 26 ใบ / ประมูล 26 ใบ"],
+        ].map(([initials, name, detail]) => (
+          <div key={name} className="flex items-center gap-3">
+            <Avatar className="size-10">
+              <AvatarFallback>{initials}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <strong className="block truncate">{name}</strong>
+              <span className="text-sm text-muted-foreground">{detail}</span>
+            </div>
+          </div>
+        ))}
+        <div className="pt-1">
+          <Button type="button" variant="outline" size="sm" className="w-full" onClick={onOpenShop}>
+            ไปยังร้านค้า
+          </Button>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={onOpenShop}>
-          ไปยังร้านค้า
-        </Button>
       </CardContent>
     </Card>
 
@@ -846,25 +899,26 @@ const ListingSheet = ({ open, mode, onModeChange, onOpenChange, onSubmit }: List
               <ModeButton active={mode === "buy"} title="ซื้อเลย" detail="ราคาคงที่ทันที" onClick={() => onModeChange("buy")} />
             </div>
 
-            <Select name="category" defaultValue="pokemon">
+            <Select name="category" defaultValue="op01">
               <SelectTrigger>
-                <SelectValue placeholder="เลือกหมวดหมู่" />
+                <SelectValue placeholder="เลือก SET" />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  <SelectItem value="pokemon">การ์ดเกม TCG</SelectItem>
-                  <SelectItem value="sealed">สินค้า sealed</SelectItem>
-                  <SelectItem value="single">การ์ดใบเดี่ยว</SelectItem>
-                  <SelectItem value="onepiece">วันพีซ</SelectItem>
+                  <SelectItem value="op01">OP-01 ROMANCE DAWN</SelectItem>
+                  <SelectItem value="op02">OP-02 PARAMOUNT WAR</SelectItem>
+                  <SelectItem value="op03">OP-03 PILLARS OF STRENGTH</SelectItem>
+                  <SelectItem value="op04">OP-04 KINGDOMS OF INTRIGUE</SelectItem>
+                  <SelectItem value="op05">OP-05 AWAKENING OF THE NEW ERA</SelectItem>
                 </SelectGroup>
               </SelectContent>
             </Select>
 
-            <Input name="title" defaultValue="Pikachu ex (SAR)" placeholder="ชื่อการ์ด" />
+            <Input name="title" defaultValue="Monkey D. Luffy (SEC)" placeholder="ชื่อการ์ด" />
             <div className="grid gap-3 sm:grid-cols-3">
-              <Input name="series" defaultValue="SV8" placeholder="ซีรีส์" />
-              <Input name="code" defaultValue="132/106" placeholder="รหัสการ์ด" />
-              <Select name="rarity" defaultValue="SAR">
+              <Input name="series" defaultValue="OP01" placeholder="ซีรีส์" />
+              <Input name="code" defaultValue="119" placeholder="รหัสการ์ด" />
+              <Select name="rarity" defaultValue="SEC">
                 <SelectTrigger>
                   <SelectValue placeholder="ระดับความหายาก" />
                 </SelectTrigger>
