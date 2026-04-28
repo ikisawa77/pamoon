@@ -35,10 +35,23 @@ export interface WalletSummary {
   bidLimit: number;
 }
 
+export type ViewerRole = "GUEST" | "MEMBER" | "SHOP" | "ADMIN";
+
+export interface ViewerSummary {
+  id?: string;
+  email?: string;
+  displayName: string;
+  role: ViewerRole;
+  status?: string;
+  shopId?: string;
+  shopStatus?: string;
+}
+
 export interface MarketplaceSnapshot {
   wallet: WalletSummary;
   products: AuctionProduct[];
   activities: ActivityItem[];
+  viewer: ViewerSummary;
   currentUserId?: string;
   primaryShopId?: string;
 }

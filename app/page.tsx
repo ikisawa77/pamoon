@@ -1,8 +1,10 @@
 import { AuctionMarketplace } from "@/components/shared/AuctionMarketplace";
+import { getViewerSummary } from "@/lib/auth/viewer";
 import { getMarketplaceSnapshot } from "@/lib/data/marketplace";
 
 const HomePage = async () => {
-  const marketplace = await getMarketplaceSnapshot();
+  const viewer = await getViewerSummary();
+  const marketplace = await getMarketplaceSnapshot(viewer);
 
   return <AuctionMarketplace initialData={marketplace} />;
 };

@@ -134,6 +134,10 @@ export const initialMarketplace: MarketplaceSnapshot = {
     pendingPayment: 320,
     bidLimit: 10000,
   },
+  viewer: {
+    displayName: "ผู้เยี่ยมชม",
+    role: "GUEST",
+  },
   activities: [
     { id: "act-1", title: "สร้างข้อมูลตัวอย่าง", detail: "3 ร้านค้า / ซื้อเลย 80 ใบ / ประมูล 80 ใบ" },
     { id: "act-2", title: "ครอบคลุม RARITY", detail: "C, UC, R, L, SR, SEC, SP, P" },

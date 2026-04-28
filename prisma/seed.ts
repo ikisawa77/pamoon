@@ -66,6 +66,7 @@ const main = async () => {
   await prisma.user.deleteMany();
 
   const adminPasswordHash = await hash(getRequiredEnv("ADMIN_PASSWORD"), 12);
+  const demoPasswordHash = await hash(process.env.DEMO_PASSWORD ?? "123456", 12);
 
   await prisma.user.create({
     data: {
@@ -83,6 +84,7 @@ const main = async () => {
     data: {
       email: "member@example.local",
       displayName: "Demo Member",
+      passwordHash: demoPasswordHash,
       role: "MEMBER",
       status: "ACTIVE",
       walletBalanceCents: 245000,
@@ -108,6 +110,7 @@ const main = async () => {
       data: {
         email: shopSeed.ownerEmail,
         displayName: shopSeed.ownerName,
+        passwordHash: demoPasswordHash,
         role: "SHOP",
         status: "ACTIVE",
         walletBalanceCents: 0,

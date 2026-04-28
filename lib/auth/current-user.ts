@@ -19,6 +19,14 @@ export const getCurrentUser = async () => {
       walletBalanceCents: true,
       bidLimitCents: true,
       createdAt: true,
+      shops: {
+        select: {
+          id: true,
+          slug: true,
+          status: true,
+        },
+        take: 1,
+      },
     },
   });
 };

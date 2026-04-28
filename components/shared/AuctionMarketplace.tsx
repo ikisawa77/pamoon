@@ -75,6 +75,7 @@ import type {
   MarketplaceSnapshot,
   ProductCategory,
   ProductRarity,
+  ViewerSummary,
   WalletSummary,
 } from "@/types/marketplace";
 
@@ -168,6 +169,10 @@ const rarityLabels: Record<ProductRarity, string> = {
 };
 
 const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMarketplaceProps) => {
+  const viewer = initialData.viewer;
+  const isGuest = viewer.role === "GUEST";
+  const isShop = viewer.role === "SHOP";
+  const isAdmin = viewer.role === "ADMIN";
   const [wallet, setWallet] = useState<WalletSummary>(initialData.wallet);
   const [products, setProducts] = useState<AuctionProduct[]>(initialData.products);
   const [activities, setActivities] = useState<ActivityItem[]>(initialData.activities);
@@ -224,6 +229,11 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
   const hotProducts = filteredProducts.filter((product) => product.hot || product.mode === "buy").slice(0, 20);
 
   const handleProductAction = async (product: AuctionProduct) => {
+    if (isGuest || isAdmin) {
+      setNotice(isAdmin ? "บัญชีผู้ดูแลใช้ดูแลระบบหลังบ้านเท่านั้น ไม่ใช้ซื้อหรือประมูลสินค้า" : "กรุณาสมัครสมาชิกหรือเข้าสู่ระบบก่อนซื้อและเสนอราคา");
+      return;
+    }
+
     if (product.mode === "buy") {
       if (wallet.balance < product.currentPrice) {
         setNotice(`ยอดเงินไม่พอสำหรับซื้อ ${product.title}`);
@@ -302,6 +312,11 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
   };
 
   const handleTopUp = async () => {
+    if (isGuest || isAdmin) {
+      setNotice(isAdmin ? "บัญชีผู้ดูแลไม่ต้องเติมเงินในหน้าร้าน" : "กรุณาสมัครสมาชิกหรือเข้าสู่ระบบก่อนเติมเงิน");
+      return;
+    }
+
     const parsed = topUpSchema.safeParse({ amount: topUpAmount });
     if (!parsed.success) {
       setNotice("กรุณาระบุจำนวนเติมเงินตั้งแต่ ฿100 ถึง ฿50,000");
@@ -348,6 +363,11 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
   };
 
   const handleRegisterShop = () => {
+    if (isGuest) {
+      setNotice("กรุณาสมัครสมาชิกก่อนส่งคำขอเปิดร้านค้า");
+      return;
+    }
+
     const parsed = shopRegistrationSchema.safeParse({
       shopName: "CardHunter Shop",
       contact: "@cardhunter",
@@ -366,6 +386,11 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
   };
 
   const handleCreateListing = async (formData: FormData) => {
+    if (!isShop) {
+      setNotice(isGuest ? "กรุณาสมัครสมาชิกและสมัครร้านค้าก่อนลงสินค้า" : "บัญชีนี้ยังไม่ใช่ร้านค้า กรุณาสมัครร้านค้าก่อนลงสินค้า");
+      return;
+    }
+
     const parsed = listingSchema.safeParse({
       mode: listingMode,
       category: formData.get("category"),
@@ -446,6 +471,7 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
   return (
     <div className="min-h-screen bg-background text-foreground">
       <SiteHeader
+        viewer={viewer}
         wallet={wallet}
         onOpenTopUp={() => setTopUpOpen(true)}
         onOpenListing={() => setListingOpen(true)}
@@ -461,6 +487,8 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
             onQueryChange={(query) => setFilters((current) => ({ ...current, query }))}
             onSortChange={setSortMode}
           />
+
+          <RoleNotice viewer={viewer} />
 
           <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary">
             <span className="font-semibold">{notice}</span>
@@ -487,6 +515,7 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
         </section>
 
         <RightPanel
+          viewer={viewer}
           wallet={wallet}
           activities={activities}
           onOpenTopUp={() => setTopUpOpen(true)}
@@ -515,13 +544,18 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
 };
 
 interface SiteHeaderProps {
+  viewer: ViewerSummary;
   wallet: WalletSummary;
   onOpenTopUp: () => void;
   onOpenListing: () => void;
 }
 
-const SiteHeader = ({ wallet, onOpenTopUp, onOpenListing }: SiteHeaderProps) => {
+const SiteHeader = ({ viewer, wallet, onOpenTopUp, onOpenListing }: SiteHeaderProps) => {
   const pathname = usePathname();
+  const isGuest = viewer.role === "GUEST";
+  const isMember = viewer.role === "MEMBER";
+  const isShop = viewer.role === "SHOP";
+  const isAdmin = viewer.role === "ADMIN";
   const navItems = [
     { label: "ประมูล", icon: Trophy, href: "/auctions" },
     { label: "ซื้อเลย", icon: CreditCard, href: "/buy-now" },
@@ -529,9 +563,11 @@ const SiteHeader = ({ wallet, onOpenTopUp, onOpenListing }: SiteHeaderProps) => 
     { label: "คอลเลกชัน", icon: BookOpen, href: "/collection" },
     { label: "ช่วยเหลือ", icon: CircleHelp, href: "/help" },
   ];
+  const profileInitials = viewer.displayName.slice(0, 2).toUpperCase();
 
   return (
-    <header className="sticky top-0 z-40 grid gap-3 border-b bg-card/95 px-4 py-3 shadow-sm backdrop-blur md:grid-cols-[auto_1fr_auto] md:items-center">
+    <header className="sticky top-0 z-40 border-b bg-card/95 shadow-sm backdrop-blur">
+      <div className="grid gap-3 px-4 py-3 md:grid-cols-[auto_1fr_auto] md:items-center">
       <Link href="/" className="flex items-center gap-2">
         <div className="flex size-10 rotate-[-8deg] items-center justify-center rounded-md bg-primary text-primary-foreground shadow-lg shadow-primary/20">
           ★
@@ -565,12 +601,43 @@ const SiteHeader = ({ wallet, onOpenTopUp, onOpenListing }: SiteHeaderProps) => 
       </nav>
 
       <div className="flex items-center gap-2 overflow-x-auto md:justify-end">
-        <Button asChild variant="outline" className="shrink-0">
+        {!isGuest && !isAdmin ? (
+          <Button asChild variant="outline" className="shrink-0">
           <Link href="/wallet">
           <Wallet data-icon="inline-start" />
           {formatMoney(wallet.balance)}
           </Link>
         </Button>
+        ) : null}
+        {isGuest ? (
+          <>
+            <Button asChild variant="outline" className="shrink-0">
+              <Link href="/login">เข้าสู่ระบบ</Link>
+            </Button>
+            <Button asChild className="shrink-0">
+              <Link href="/register">สมัครสมาชิก</Link>
+            </Button>
+          </>
+        ) : null}
+        {isMember ? (
+          <Button asChild variant="outline" className="hidden shrink-0 sm:inline-flex">
+            <Link href="/seller/register">
+              <Building2 data-icon="inline-start" />
+              สมัครร้านค้า
+            </Link>
+          </Button>
+        ) : null}
+        {isShop ? (
+          <Button type="button" className="hidden shrink-0 sm:inline-flex" onClick={onOpenListing}>
+            <Plus data-icon="inline-start" />
+            ลงสินค้า
+          </Button>
+        ) : null}
+        {isAdmin ? (
+          <Button asChild className="shrink-0">
+            <Link href="/admin">หลังบ้าน Admin</Link>
+          </Button>
+        ) : null}
         <Button type="button" className="shrink-0 bg-wallet text-wallet-foreground hover:bg-wallet/90" onClick={onOpenTopUp}>
           เติมเงิน
         </Button>
@@ -585,24 +652,91 @@ const SiteHeader = ({ wallet, onOpenTopUp, onOpenListing }: SiteHeaderProps) => 
           <ShoppingCart />
           </Link>
         </Button>
-        <Button asChild variant="ghost" className="hidden gap-2 xl:flex">
+        {!isGuest ? (
+          <Button asChild variant="ghost" className="hidden gap-2 xl:flex">
           <Link href="/account">
           <Avatar className="size-9">
-            <AvatarFallback>CH</AvatarFallback>
+            <AvatarFallback>{profileInitials}</AvatarFallback>
           </Avatar>
           <span className="text-left leading-tight">
-            <span className="block font-semibold">CardHunter</span>
-            <span className="block text-xs text-muted-foreground">นักสะสม Lv.12</span>
+            <span className="block font-semibold">{viewer.displayName}</span>
+            <span className="block text-xs text-muted-foreground">
+              {isShop ? "ร้านค้า" : isAdmin ? "ผู้ดูแลระบบ" : "สมาชิก"}
+            </span>
           </span>
           <ChevronDown data-icon="inline-end" />
           </Link>
         </Button>
-        <Button type="button" className="xl:hidden" onClick={onOpenListing}>
+        ) : null}
+        {isShop ? (
+          <Button type="button" className="xl:hidden" onClick={onOpenListing}>
           <Plus data-icon="inline-start" />
           ลงสินค้า
         </Button>
+        ) : null}
+      </div>
+      </div>
+      <div className="border-t bg-muted/50 px-4 py-2 text-sm text-muted-foreground">
+        {isGuest ? "ยังไม่ได้สมัครสมาชิก: ดูรายการได้ทั้งหมด แต่ต้องเข้าสู่ระบบก่อนซื้อ ประมูล เติมเงิน หรือสมัครร้านค้า" : null}
+        {isMember ? "โหมดสมาชิก: ซื้อสินค้า เสนอราคา เติมเงิน และสมัครร้านค้าได้จากเมนูด้านบน" : null}
+        {isShop ? "โหมดร้านค้า: ลงสินค้า เปิดประมูล และติดตามยอดขายจากเมนูร้านค้าได้" : null}
+        {isAdmin ? "โหมดผู้ดูแล: บัญชีนี้ใช้สำหรับหลังบ้านเท่านั้น การซื้อขายหน้าร้านถูกปิดไว้" : null}
       </div>
     </header>
+  );
+};
+
+interface RoleNoticeProps {
+  viewer: ViewerSummary;
+}
+
+const RoleNotice = ({ viewer }: RoleNoticeProps) => {
+  if (viewer.role === "GUEST") {
+    return (
+      <div className="grid gap-3 rounded-lg border bg-card p-4 shadow-sm sm:grid-cols-[1fr_auto_auto] sm:items-center">
+        <div>
+          <strong className="block">เริ่มใช้งาน BidCard TH</strong>
+          <span className="text-sm text-muted-foreground">สมัครสมาชิกเพื่อซื้อ เติมเงิน และเสนอราคา หรือสมัครร้านค้าเพื่อเริ่มลงขายการ์ด</span>
+        </div>
+        <Button asChild variant="outline">
+          <Link href="/login">เข้าสู่ระบบ</Link>
+        </Button>
+        <Button asChild>
+          <Link href="/register">สมัครสมาชิก</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  if (viewer.role === "MEMBER") {
+    return (
+      <div className="flex flex-col gap-3 rounded-lg border border-wallet/20 bg-wallet/5 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+        <span><strong>สมาชิกทั่วไป:</strong> พร้อมซื้อและประมูลแล้ว หากต้องการลงขายให้สมัครร้านค้าก่อน</span>
+        <Button asChild variant="outline">
+          <Link href="/seller/register">สมัครร้านค้า</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  if (viewer.role === "SHOP") {
+    return (
+      <div className="flex flex-col gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+        <span><strong>ร้านค้า:</strong> ลงสินค้า เปิดประมูล และจัดการรายการขายได้จากปุ่มลงสินค้า</span>
+        <Button asChild>
+          <Link href="/shops">ดูตลาดร้านค้า</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border bg-card p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+      <span><strong>Admin:</strong> ใช้บัญชีนี้ดูแลระบบหลังบ้านเท่านั้น</span>
+      <Button asChild>
+        <Link href="/admin">เปิดหลังบ้าน</Link>
+      </Button>
+    </div>
   );
 };
 
@@ -865,6 +999,7 @@ const PriceMetric = ({ label, value, strong = false }: PriceMetricProps) => (
 );
 
 interface RightPanelProps {
+  viewer: ViewerSummary;
   wallet: WalletSummary;
   activities: ActivityItem[];
   onOpenTopUp: () => void;
@@ -872,8 +1007,54 @@ interface RightPanelProps {
   onOpenListing: () => void;
 }
 
-const RightPanel = ({ wallet, activities, onOpenTopUp, onOpenShop, onOpenListing }: RightPanelProps) => (
+const RightPanel = ({ viewer, wallet, activities, onOpenTopUp, onOpenShop, onOpenListing }: RightPanelProps) => (
   <aside className="flex flex-col gap-4 lg:grid lg:grid-cols-2 xl:sticky xl:top-24 xl:flex xl:h-[calc(100vh-7rem)] xl:overflow-auto">
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          {viewer.role === "GUEST" ? "ยังไม่สมัครสมาชิก" : viewer.role === "SHOP" ? "เมนูร้านค้า" : viewer.role === "ADMIN" ? "ผู้ดูแลระบบ" : "เมนูสมาชิก"}
+        </CardTitle>
+        <CardDescription>
+          {viewer.role === "GUEST"
+            ? "สมัครสมาชิกเพื่อซื้อ ประมูล เติมเงิน และสมัครเปิดร้าน"
+            : viewer.role === "SHOP"
+              ? "จัดการการลงสินค้าและเปิดประมูลจากบัญชีร้านค้า"
+              : viewer.role === "ADMIN"
+                ? "บัญชี admin ใช้เข้าหลังบ้านเท่านั้น"
+                : "ซื้อสินค้า เสนอราคา เติมเงิน และสมัครร้านค้าได้"}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid grid-cols-2 gap-2">
+        {viewer.role === "GUEST" ? (
+          <>
+            <Button asChild variant="outline">
+              <Link href="/login">เข้าสู่ระบบ</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/register">สมัครสมาชิก</Link>
+            </Button>
+          </>
+        ) : viewer.role === "SHOP" ? (
+          <>
+            <Button type="button" onClick={onOpenListing}>ลงสินค้า</Button>
+            <Button asChild variant="outline">
+              <Link href="/shops">ดูหน้าร้าน</Link>
+            </Button>
+          </>
+        ) : viewer.role === "ADMIN" ? (
+          <Button asChild className="col-span-2">
+            <Link href="/admin">เปิดหลังบ้าน</Link>
+          </Button>
+        ) : (
+          <>
+            <Button type="button" onClick={onOpenTopUp}>เติมเงิน</Button>
+            <Button asChild variant="outline">
+              <Link href="/seller/register">สมัครร้านค้า</Link>
+            </Button>
+          </>
+        )}
+      </CardContent>
+    </Card>
     <Card className="wallet-visual wallet-card-shadow overflow-hidden border-0 text-wallet-foreground">
       <CardHeader className="relative z-10">
         <div className="flex items-center justify-between">
