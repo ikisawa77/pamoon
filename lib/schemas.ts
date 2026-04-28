@@ -72,6 +72,20 @@ export const homeContentUpdateSchema = z.object({
   isActive: z.boolean(),
 });
 
+export const favoriteProductSchema = z.object({
+  productId: z.string().trim().min(1),
+  emailNotify: z.boolean().optional(),
+  notifyOutbid: z.boolean().optional(),
+  notifyEndingSoon: z.boolean().optional(),
+});
+
+export const favoriteProductUpdateSchema = z.object({
+  productId: z.string().trim().min(1),
+  emailNotify: z.boolean().optional(),
+  notifyOutbid: z.boolean().optional(),
+  notifyEndingSoon: z.boolean().optional(),
+});
+
 export const notificationQuerySchema = z.object({
   status: z.enum(["all", "unread"]).optional(),
   category: z.enum(["all", "orders", "auctions", "chat", "system", "action"]).optional(),
@@ -93,5 +107,7 @@ export type CreateOrderApiInput = z.infer<typeof createOrderApiSchema>;
 export type OrderActionInput = z.infer<typeof orderActionSchema>;
 export type ChatMessageInput = z.infer<typeof chatMessageSchema>;
 export type HomeContentUpdateInput = z.infer<typeof homeContentUpdateSchema>;
+export type FavoriteProductInput = z.infer<typeof favoriteProductSchema>;
+export type FavoriteProductUpdateInput = z.infer<typeof favoriteProductUpdateSchema>;
 export type NotificationQueryInput = z.infer<typeof notificationQuerySchema>;
 export type LoginInput = z.infer<typeof loginSchema>;

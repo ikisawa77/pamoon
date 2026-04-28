@@ -73,6 +73,7 @@ const cardNames = [
   "Gol D. Roger",
 ];
 const rarityPriceBase = { C: 80, UC: 150, R: 320, L: 750, SR: 1600, SEC: 3600, SP: 6200, P: 9800 };
+const dataCardSetNames = new Map(sets.map((set) => [set.code, set.name]));
 
 const id = (prefix, index) => `seed_${prefix}_${String(index).padStart(3, "0")}`;
 const getRequiredEnv = (key) => {
@@ -84,27 +85,91 @@ const getRequiredEnv = (key) => {
 
   return value;
 };
-const makeProduct = (index, mode, shopIdBySlug) => {
+
+const normalizeDataCardRarity = (rarity) => {
+  if (["C", "UC", "R", "L", "SR", "SEC", "SP"].includes(rarity)) {
+    return rarity;
+  }
+
+  return "P";
+};
+
+const fetchDataCardSamples = async () => {
+  try {
+    const response = await fetch("https://data-cardgame.com/prices_full.json");
+
+    if (!response.ok) {
+      return new Map();
+    }
+
+    const priceData = await response.json();
+    const buckets = new Map(rarities.map((rarity) => [rarity, []]));
+
+    for (const [setId, cards] of Object.entries(priceData)) {
+      const setCode = setId.toUpperCase();
+
+      if (!dataCardSetNames.has(setCode) || typeof cards !== "object" || !cards) {
+        continue;
+      }
+
+      for (const [key, card] of Object.entries(cards)) {
+        if (!card || typeof card !== "object" || typeof card.image_url !== "string") {
+          continue;
+        }
+
+        const rarity = normalizeDataCardRarity(String(card.rarity ?? "P"));
+        buckets.get(rarity)?.push({
+          key,
+          name: String(card.name ?? key),
+          rarity,
+          sourceRarity: String(card.rarity ?? rarity),
+          setCode,
+          setName: dataCardSetNames.get(setCode),
+          priceCents: Math.max(5000, Math.round(Number(card.thb ?? card.jpy ?? 100) * 100)),
+          imageUrl: card.image_url,
+        });
+      }
+    }
+
+    return buckets;
+  } catch {
+    return new Map();
+  }
+};
+
+const pickDataCard = (samplesByRarity, rarity, index) => {
+  const bucket = samplesByRarity.get(rarity);
+
+  if (bucket && bucket.length > 0) {
+    return bucket[index % bucket.length];
+  }
+
+  const allCards = Array.from(samplesByRarity.values()).flat();
+  return allCards.length > 0 ? allCards[index % allCards.length] : null;
+};
+
+const makeProduct = (index, mode, shopIdBySlug, samplesByRarity) => {
   const rarity = rarities[index % rarities.length];
   const set = sets[index % sets.length];
   const shop = shopSeeds[index % shopSeeds.length];
-  const basePrice = rarityPriceBase[rarity] + index * 37 + (mode === "AUCTION" ? 250 : 520);
+  const dataCard = pickDataCard(samplesByRarity, rarity, mode === "AUCTION" ? index : index + 80);
+  const basePrice = dataCard ? Math.round(dataCard.priceCents / 100) : rarityPriceBase[rarity] + index * 37 + (mode === "AUCTION" ? 250 : 520);
   const currentPriceCents = Math.round(basePrice / 10) * 1000;
 
   return {
     id: id(mode.toLowerCase(), index + 1),
     sellerShopId: shopIdBySlug.get(shop.slug),
-    title: `${cardNames[index % cardNames.length]} (${rarity})`,
-    cardCode: `${set.code}-${String((index % 121) + 1).padStart(3, "0")} ${rarity}`,
-    setCode: set.code,
-    setName: set.name,
-    category: set.category,
+    title: dataCard ? `${dataCard.name} (${dataCard.sourceRarity})` : `${cardNames[index % cardNames.length]} (${rarity})`,
+    cardCode: dataCard ? `${dataCard.key.replace("_", " ")} ${dataCard.sourceRarity}` : `${set.code}-${String((index % 121) + 1).padStart(3, "0")} ${rarity}`,
+    setCode: dataCard?.setCode ?? set.code,
+    setName: dataCard?.setName ?? set.name,
+    category: dataCard?.setCode ?? set.category,
     rarity,
     mode,
     status: "ACTIVE",
     conditionLabel: "Near Mint",
     description: "ข้อมูลตัวอย่างสำหรับทดสอบระบบหลังบ้าน",
-    imageUrl: "/assets/trading-card-products.png",
+    imageUrl: dataCard?.imageUrl ?? "/assets/trading-card-products.png",
     openingPriceCents: Math.max(5000, Math.round((currentPriceCents * 0.72) / 1000) * 1000),
     currentPriceCents,
     nextBidCents: currentPriceCents + Math.max(10000, Math.round(currentPriceCents * 0.05)),
@@ -126,10 +191,11 @@ const main = async () => {
   const now = new Date();
   const adminPasswordHash = await hash(getRequiredEnv("ADMIN_PASSWORD"), 12);
   const demoPasswordHash = await hash(process.env.DEMO_PASSWORD ?? "123456", 12);
+  const dataCardSamples = await fetchDataCardSamples();
 
   await connection.beginTransaction();
   try {
-    for (const table of ["ChatMessage", "ChatThread", "ModerationCase", "Notification", "Order", "Bid", "WalletTransaction", "HomeContent", "Product", "Shop", "User"]) {
+    for (const table of ["EmailNotification", "FavoriteProduct", "ChatMessage", "ChatThread", "ModerationCase", "Notification", "Order", "Bid", "WalletTransaction", "HomeContent", "Product", "Shop", "User"]) {
       await connection.query(`DELETE FROM \`${table}\``);
     }
 
@@ -224,11 +290,26 @@ const main = async () => {
     }
 
     const products = [
-      ...Array.from({ length: 80 }, (_, index) => makeProduct(index, "AUCTION", shopIdBySlug)),
-      ...Array.from({ length: 80 }, (_, index) => makeProduct(index, "BUY", shopIdBySlug)),
+      ...Array.from({ length: 80 }, (_, index) => makeProduct(index, "AUCTION", shopIdBySlug, dataCardSamples)),
+      ...Array.from({ length: 80 }, (_, index) => makeProduct(index, "BUY", shopIdBySlug, dataCardSamples)),
     ];
     for (const product of products) {
       await insert(connection, "Product", { ...product, createdAt: now, updatedAt: now });
+    }
+
+    for (const [index, product] of products.slice(1, 7).entries()) {
+      await insert(connection, "FavoriteProduct", {
+        id: id("favorite", index + 1),
+        userId: id("user", 2),
+        productId: product.id,
+        emailNotify: true,
+        notifyOutbid: true,
+        notifyEndingSoon: product.mode === "AUCTION",
+        endingSoonNotifiedAt: null,
+        disabledAfterAuctionAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
     }
 
     const auctionOrderId = id("order", 1);

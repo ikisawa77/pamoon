@@ -1,13 +1,13 @@
 import Link from "next/link";
-import { BookOpen, CircleHelp, CreditCard, ShoppingCart, Store, Trophy, Wallet } from "lucide-react";
+import { CircleHelp, CreditCard, Heart, ShoppingCart, Store, Trophy, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NotificationBell } from "@/components/shared/NotificationBell";
 
 const navItems = [
   { label: "ประมูล", href: "/auctions", icon: Trophy },
   { label: "ซื้อเลย", href: "/buy-now", icon: CreditCard },
-  { label: "ตลาดร้านค้า", href: "/shops", icon: Store },
-  { label: "คอลเลกชัน", href: "/collection", icon: BookOpen },
+  { label: "ร้านค้า", href: "/shops", icon: Store },
+  { label: "รายการโปรด", href: "/collection", icon: Heart },
   { label: "ช่วยเหลือ", href: "/help", icon: CircleHelp },
 ];
 

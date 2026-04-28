@@ -7,6 +7,7 @@ const SHIPPING_EXTENSION_MS = 24 * HOUR_MS;
 const REFUND_WINDOW_MS = 24 * HOUR_MS;
 const CHAT_ARCHIVE_MS = 48 * HOUR_MS;
 const SHIPPING_EXTENSION_FEE_CENTS = 5000;
+const AUCTION_ENDING_SOON_MS = 5 * 60 * 1000;
 
 const addMs = (date: Date, ms: number) => new Date(date.getTime() + ms);
 
@@ -343,9 +344,74 @@ export const runMarketplaceSlaProcessor = async (now = new Date()) => {
     shippingOverdue: 0,
     refundsCompleted: 0,
     chatsArchived: 0,
+    favoriteEndingSoon: 0,
+    favoriteNotificationsDisabled: 0,
   };
 
   await prisma.$transaction(async (tx) => {
+    const endingSoonProducts = await tx.product.findMany({
+      where: {
+        mode: "AUCTION",
+        status: "ACTIVE",
+        auctionEndsAt: {
+          gt: now,
+          lte: addMs(now, AUCTION_ENDING_SOON_MS),
+        },
+      },
+      include: {
+        favorites: {
+          where: {
+            emailNotify: true,
+            notifyEndingSoon: true,
+            endingSoonNotifiedAt: null,
+            disabledAfterAuctionAt: null,
+          },
+          include: {
+            user: { select: { id: true, email: true } },
+          },
+        },
+      },
+      take: 50,
+    });
+
+    for (const product of endingSoonProducts) {
+      const favoriteRecipients = product.favorites.map((favorite) => favorite.user);
+
+      if (favoriteRecipients.length === 0) {
+        continue;
+      }
+
+      await tx.notification.createMany({
+        data: favoriteRecipients.map((recipient) => ({
+          recipientId: recipient.id,
+          type: "SYSTEM" as const,
+          title: "ประมูลในรายการโปรดเหลือ 5 นาที",
+          message: `${product.title} จะปิดประมูลในอีกไม่กี่นาที`,
+          href: "/collection",
+          productId: product.id,
+        })),
+      });
+
+      await tx.emailNotification.createMany({
+        data: favoriteRecipients.map((recipient) => ({
+          recipientId: recipient.id,
+          toEmail: recipient.email,
+          subject: `ประมูลใกล้จบ: ${product.title}`,
+          body: `${product.title} ในรายการโปรดของคุณเหลือเวลาประมูลประมาณ 5 นาที`,
+          status: "PENDING" as const,
+        })),
+      });
+
+      await tx.favoriteProduct.updateMany({
+        where: {
+          productId: product.id,
+          userId: { in: favoriteRecipients.map((recipient) => recipient.id) },
+        },
+        data: { endingSoonNotifiedAt: now },
+      });
+      result.favoriteEndingSoon += favoriteRecipients.length;
+    }
+
     const endedAuctions = await tx.product.findMany({
       where: { mode: "AUCTION", status: "ACTIVE", auctionEndsAt: { lte: now } },
       include: {
@@ -552,6 +618,36 @@ export const runMarketplaceSlaProcessor = async (now = new Date()) => {
     for (const thread of staleThreads) {
       await tx.chatThread.update({ where: { id: thread.id }, data: { status: "ARCHIVED", archivedAt: now } });
       result.chatsArchived += 1;
+    }
+
+    const endedFavoriteProducts = await tx.product.findMany({
+      where: { mode: "AUCTION", status: "ENDED" },
+      include: {
+        bids: { where: { status: "WINNING" }, select: { bidderId: true }, take: 1 },
+        favorites: {
+          where: { emailNotify: true, disabledAfterAuctionAt: null },
+          select: { userId: true },
+        },
+      },
+      take: 100,
+    });
+
+    for (const product of endedFavoriteProducts) {
+      const winningBidderId = product.bids[0]?.bidderId;
+      const userIdsToDisable = product.favorites.map((favorite) => favorite.userId).filter((userId) => userId !== winningBidderId);
+
+      if (userIdsToDisable.length === 0) {
+        continue;
+      }
+
+      const updateResult = await tx.favoriteProduct.updateMany({
+        where: { productId: product.id, userId: { in: userIdsToDisable } },
+        data: {
+          emailNotify: false,
+          disabledAfterAuctionAt: now,
+        },
+      });
+      result.favoriteNotificationsDisabled += updateResult.count;
     }
   });
 

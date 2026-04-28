@@ -119,10 +119,11 @@ const HomepageExperience = ({
   const [query, setQuery] = useState("");
 
   const heroSlide = slides[activeSlide] ?? slides[0];
-  const filteredLatestSales = useMemo(() => {
+  const filteredDockProducts = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
+    const combinedProducts = [...latestSales, ...latestAuctions];
 
-    return latestSales.filter((product) => {
+    return combinedProducts.filter((product) => {
       const queryMatched =
         !normalizedQuery ||
         `${product.title} ${product.cardCode} ${product.setName} ${product.sellerShop.name}`.toLowerCase().includes(normalizedQuery);
@@ -135,7 +136,16 @@ const HomepageExperience = ({
 
       return queryMatched && filterMatched;
     });
-  }, [activeFilter, latestSales, query]);
+  }, [activeFilter, latestAuctions, latestSales, query]);
+
+  const dockRailTitle =
+    activeFilter === "auction"
+      ? "ประมูลจากตัวกรอง"
+      : activeFilter === "rare"
+        ? "การ์ดหายากจากตัวกรอง"
+        : activeFilter === "shops"
+          ? "สินค้าตามร้านค้าที่ค้นหา"
+          : "ลงขายล่าสุด";
 
   const dockItems: Array<{ value: DockFilter; label: string; icon: LucideIcon }> = [
     { value: "all", label: "ทั้งหมด", icon: Home },
@@ -161,7 +171,7 @@ const HomepageExperience = ({
             <Button asChild variant="ghost"><Link href="/auctions">ประมูล</Link></Button>
             <Button asChild variant="ghost"><Link href="/buy-now">ซื้อเลย</Link></Button>
             <Button asChild variant="ghost"><Link href="/shops">ร้านค้า</Link></Button>
-            <Button asChild variant="ghost"><Link href="/collection">คอลเลกชัน</Link></Button>
+            <Button asChild variant="ghost"><Link href="/collection">รายการโปรด</Link></Button>
           </nav>
           <div className="flex items-center gap-2">
             <Button asChild variant="outline" className="hidden sm:inline-flex">
@@ -236,7 +246,7 @@ const HomepageExperience = ({
           <div className="min-w-0 space-y-12">
             <PromoStrip promotions={promotions} />
             <ProductRail title="ประมูลใกล้จะหมดเวลา" icon={Clock3} products={endingAuctions} href="/auctions" />
-            <ProductRail title="ลงขายล่าสุด" icon={ShoppingBag} products={filteredLatestSales} href="/buy-now" />
+            <ProductRail title={dockRailTitle} icon={ShoppingBag} products={filteredDockProducts} href={activeFilter === "auction" ? "/auctions" : "/buy-now"} />
             <ProductRail title="ประมูลล่าสุด" icon={Flame} products={latestAuctions} href="/auctions" />
             <ArticleSection articles={articles} />
           </div>

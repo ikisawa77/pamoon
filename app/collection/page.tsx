@@ -1,89 +1,71 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StorefrontPageLayout } from "@/components/shared/StorefrontPageLayout";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { FavoritesClient } from "@/components/shared/FavoritesClient";
+import { getCurrentUser } from "@/lib/auth/current-user";
 import { prisma } from "@/lib/db/prisma";
-import type { ProductRarity } from "@/lib/generated/prisma/enums";
 
 export const dynamic = "force-dynamic";
 
-const rarityOrder: ProductRarity[] = ["C", "UC", "R", "L", "SR", "SEC", "SP", "P"];
-
 const CollectionPage = async () => {
-  const [rarities, categories, products] = await Promise.all([
-    prisma.product.groupBy({
-      by: ["rarity"],
-      where: { status: "ACTIVE" },
-      _count: { _all: true },
-    }),
-    prisma.product.groupBy({
-      by: ["category"],
-      where: { status: "ACTIVE" },
-      _count: { _all: true },
-    }),
-    prisma.product.findMany({
-      where: { status: "ACTIVE" },
-      orderBy: [{ rarity: "asc" }, { title: "asc" }],
-      take: 32,
-      include: {
-        sellerShop: {
-          select: {
-            name: true,
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#f6f6f2] px-4">
+        <section className="max-w-md rounded-2xl border bg-background p-8 text-center shadow-sm">
+          <h1 className="text-3xl font-bold">รายการโปรด</h1>
+          <p className="mt-3 text-muted-foreground">กรุณาเข้าสู่ระบบก่อนดูและจัดการรายการโปรด</p>
+          <Button asChild className="mt-6">
+            <Link href="/login">เข้าสู่ระบบ</Link>
+          </Button>
+        </section>
+      </main>
+    );
+  }
+
+  const favorites = await prisma.favoriteProduct.findMany({
+    where: { userId: user.id },
+    orderBy: { createdAt: "desc" },
+    include: {
+      product: {
+        include: {
+          sellerShop: {
+            select: {
+              name: true,
+              slug: true,
+            },
           },
         },
       },
-    }),
-  ]);
-
-  const rarityCounts = new Map(rarities.map((item) => [item.rarity, item._count._all]));
+    },
+  });
 
   return (
-    <StorefrontPageLayout title="คอลเลกชัน" description="ภาพรวมการ์ดที่มีในตลาด แยกตาม RARITY และ SET เพื่อช่วยวางแผนสะสมหรือค้นหาการ์ดที่ยังขาด">
-      <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
-        <div className="flex flex-col gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>ครบทุก RARITY</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-2">
-              {rarityOrder.map((rarity) => (
-                <div key={rarity} className="rounded-md border bg-background p-3">
-                  <Badge>{rarity}</Badge>
-                  <strong className="mt-2 block text-xl">{(rarityCounts.get(rarity) ?? 0).toLocaleString("th-TH")}</strong>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>ตาม SET</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-2">
-              {categories.map((category) => (
-                <div key={category.category} className="flex items-center justify-between rounded-md bg-muted p-3">
-                  <strong>{category.category}</strong>
-                  <span className="text-muted-foreground">{category._count._all.toLocaleString("th-TH")} ใบ</span>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-        <Card>
-          <CardHeader>
-            <CardTitle>การ์ดในตลาด</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {products.map((product, index) => (
-              <div key={product.id} className="rounded-md border bg-background p-3">
-                <div className={`product-art object-pos-${(index % 3) + 1} mb-3 aspect-[4/3] rounded-md bg-muted`} />
-                <Badge variant="outline">{product.rarity}</Badge>
-                <strong className="mt-2 block">{product.title}</strong>
-                <span className="text-sm text-muted-foreground">{product.sellerShop.name}</span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
-    </StorefrontPageLayout>
+    <FavoritesClient
+      viewerName={user.displayName}
+      initialFavorites={favorites.map((favorite) => ({
+        id: favorite.id,
+        productId: favorite.productId,
+        emailNotify: favorite.emailNotify,
+        notifyOutbid: favorite.notifyOutbid,
+        notifyEndingSoon: favorite.notifyEndingSoon,
+        disabledAfterAuctionAt: favorite.disabledAfterAuctionAt?.toISOString() ?? null,
+        product: {
+          id: favorite.product.id,
+          title: favorite.product.title,
+          cardCode: favorite.product.cardCode,
+          setName: favorite.product.setName,
+          rarity: favorite.product.rarity,
+          mode: favorite.product.mode,
+          currentPriceCents: favorite.product.currentPriceCents,
+          nextBidCents: favorite.product.nextBidCents,
+          watcherCount: favorite.product.watcherCount,
+          auctionEndsAt: favorite.product.auctionEndsAt?.toISOString() ?? null,
+          imageUrl: favorite.product.imageUrl,
+          sellerShop: favorite.product.sellerShop,
+        },
+      }))}
+    />
   );
 };
 

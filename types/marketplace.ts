@@ -19,8 +19,10 @@ export interface AuctionProduct {
   nextBid: number;
   watchers: number;
   endsIn: string;
+  imageUrl: string | null;
   imagePositionClass: string;
   hot: boolean;
+  isFavorite?: boolean;
 }
 
 export interface ActivityItem {

@@ -140,6 +140,13 @@ enum HomeContentType {
   FEATURED_SHOP
 }
 
+enum EmailNotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
 model User {
   id                 String              @id @default(cuid())
   email              String              @unique @db.VarChar(191)
@@ -161,6 +168,8 @@ model User {
   chatMessages       ChatMessage[]
   moderationCases    ModerationCase[]    @relation("ModerationUser")
   assignedCases      ModerationCase[]    @relation("ModerationAssignee")
+  favoriteProducts   FavoriteProduct[]
+  emailNotifications EmailNotification[]
 
   @@index([role])
   @@index([status])
@@ -213,6 +222,7 @@ model Product {
   order              Order?
   notifications      Notification[]
   chatThreads        ChatThread[]
+  favorites          FavoriteProduct[]
 
   @@index([sellerShopId])
   @@index([mode, status])
@@ -395,4 +405,39 @@ model HomeContent {
   updatedAt   DateTime        @updatedAt
 
   @@index([type, isActive, sortOrder])
+}
+
+model FavoriteProduct {
+  id                    String    @id @default(cuid())
+  userId                String
+  productId             String
+  emailNotify           Boolean   @default(true)
+  notifyOutbid          Boolean   @default(true)
+  notifyEndingSoon      Boolean   @default(true)
+  endingSoonNotifiedAt  DateTime?
+  disabledAfterAuctionAt DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product               Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([productId, emailNotify])
+  @@index([userId, createdAt])
+}
+
+model EmailNotification {
+  id          String                  @id @default(cuid())
+  recipientId String
+  toEmail     String                  @db.VarChar(191)
+  subject     String                  @db.VarChar(180)
+  body        String                  @db.Text
+  status      EmailNotificationStatus @default(PENDING)
+  reason      String?                 @db.VarChar(255)
+  sentAt      DateTime?
+  createdAt   DateTime                @default(now())
+  recipient   User                    @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId, status])
+  @@index([status, createdAt])
 }

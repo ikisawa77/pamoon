@@ -46,6 +46,29 @@ export const POST = async (request: NextRequest) => {
             },
             select: {
               bidderId: true,
+              bidder: {
+                select: {
+                  id: true,
+                  email: true,
+                  displayName: true,
+                },
+              },
+            },
+          },
+          favorites: {
+            where: {
+              emailNotify: true,
+              notifyOutbid: true,
+              disabledAfterAuctionAt: null,
+            },
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  email: true,
+                  displayName: true,
+                },
+              },
             },
           },
         },
@@ -68,9 +91,10 @@ export const POST = async (request: NextRequest) => {
         throw new Error("วงเงินประมูลไม่เพียงพอ");
       }
 
-      const previousBidderIds = product.bids
-        .map((bidItem) => bidItem.bidderId)
-        .filter((bidderId) => bidderId !== bidder.id);
+      const previousBidders = product.bids
+        .map((bidItem) => bidItem.bidder)
+        .filter((bidderItem) => bidderItem.id !== bidder.id);
+      const previousBidderIds = Array.from(new Set(previousBidders.map((bidderItem) => bidderItem.id)));
 
       await tx.bid.updateMany({
         where: { productId: product.id, status: "ACTIVE" },
@@ -143,6 +167,50 @@ export const POST = async (request: NextRequest) => {
             href: "/account/auctions",
             productId: updatedProduct.id,
             bidId: bid.id,
+          })),
+        });
+      }
+
+      const favoriteUsers = product.favorites
+        .map((favorite) => favorite.user)
+        .filter((favoriteUser) => favoriteUser.id !== bidder.id && favoriteUser.id !== product.sellerShop.owner.id);
+      const favoriteUserIds = Array.from(new Set(favoriteUsers.map((favoriteUser) => favoriteUser.id)));
+
+      if (favoriteUserIds.length > 0) {
+        await tx.notification.createMany({
+          data: favoriteUserIds.map((recipientId) => ({
+            recipientId,
+            actorId: bidder.id,
+            type: "BID_OUTBID" as const,
+            title: "รายการโปรดมีราคาใหม่",
+            message: `${updatedProduct.title} มีผู้เสนอราคาใหม่ ${Math.round(input.amountCents / 100).toLocaleString("th-TH")} บาท`,
+            href: "/collection",
+            productId: updatedProduct.id,
+            bidId: bid.id,
+          })),
+        });
+      }
+
+      const emailRecipients = [
+        ...previousBidders.map((recipient) => ({
+          recipientId: recipient.id,
+          toEmail: recipient.email,
+          subject: `คุณถูกประมูลทับ: ${updatedProduct.title}`,
+          body: `มีผู้เสนอราคา ${Math.round(input.amountCents / 100).toLocaleString("th-TH")} บาทในรายการ ${updatedProduct.title} กรุณาเข้าไปเสนอราคาใหม่หากยังสนใจ`,
+        })),
+        ...favoriteUsers.map((recipient) => ({
+          recipientId: recipient.id,
+          toEmail: recipient.email,
+          subject: `รายการโปรดมีราคาใหม่: ${updatedProduct.title}`,
+          body: `${updatedProduct.title} มีผู้เสนอราคาใหม่ ${Math.round(input.amountCents / 100).toLocaleString("th-TH")} บาท`,
+        })),
+      ];
+
+      if (emailRecipients.length > 0) {
+        await tx.emailNotification.createMany({
+          data: emailRecipients.map((email) => ({
+            ...email,
+            status: "PENDING" as const,
           })),
         });
       }

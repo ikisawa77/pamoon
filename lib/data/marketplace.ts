@@ -72,6 +72,10 @@ export const getMarketplaceSnapshot = cache(
                 },
               },
             },
+            favorites: {
+              where: { userId: viewer?.id ?? "__guest__" },
+              select: { id: true },
+            },
           },
           orderBy: [{ mode: "asc" }, { auctionEndsAt: "asc" }, { createdAt: "desc" }],
           take: 160,
@@ -109,8 +113,10 @@ export const getMarketplaceSnapshot = cache(
           nextBid: moneyFromCents(product.nextBidCents),
           watchers: product.watcherCount,
           endsIn: formatAuctionEnds(product.auctionEndsAt, mode),
+          imageUrl: product.imageUrl,
           imagePositionClass: `object-pos-${(index % 3) + 1}`,
           hot: index % 5 === 0,
+          isFavorite: product.favorites.length > 0,
         };
       });
 

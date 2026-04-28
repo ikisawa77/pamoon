@@ -499,6 +499,7 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
       nextBid: price + 250,
       watchers: 0,
       endsIn: listing.mode === "auction" ? "เน€เธซเธฅเธทเธญ 2 เธเธต (เธซเธกเธ” 28 เน€เธก.เธข. 2028)" : "เธเธฃเนเธญเธกเธชเนเธ",
+      imageUrl: null,
       imagePositionClass: "object-pos-1",
       hot: false,
     };
