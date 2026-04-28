@@ -17,7 +17,28 @@ export const POST = async (request: NextRequest) => {
     const input = parsed.data;
 
     const result = await prisma.$transaction(async (tx) => {
-      const product = await tx.product.findUnique({ where: { id: input.productId } });
+      const product = await tx.product.findUnique({
+        where: { id: input.productId },
+        include: {
+          sellerShop: {
+            include: {
+              owner: {
+                select: {
+                  id: true,
+                },
+              },
+            },
+          },
+          bids: {
+            where: {
+              status: "ACTIVE",
+            },
+            select: {
+              bidderId: true,
+            },
+          },
+        },
+      });
       const bidder = await tx.user.findUnique({ where: { id: input.bidderId } });
 
       if (!product || product.mode !== "AUCTION" || product.status !== "ACTIVE") {
@@ -35,6 +56,10 @@ export const POST = async (request: NextRequest) => {
       if (bidder.bidLimitCents < input.amountCents) {
         throw new Error("วงเงินประมูลไม่เพียงพอ");
       }
+
+      const previousBidderIds = product.bids
+        .map((bidItem) => bidItem.bidderId)
+        .filter((bidderId) => bidderId !== bidder.id);
 
       await tx.bid.updateMany({
         where: { productId: product.id, status: "ACTIVE" },
@@ -70,6 +95,47 @@ export const POST = async (request: NextRequest) => {
         },
       });
 
+      await tx.notification.create({
+        data: {
+          recipientId: bidder.id,
+          actorId: bidder.id,
+          type: "BID_WINNING",
+          title: "เสนอราคาสำเร็จ",
+          message: `คุณเป็นผู้เสนอราคาสูงสุดของ ${updatedProduct.title}`,
+          href: "/account/auctions",
+          productId: updatedProduct.id,
+          bidId: bid.id,
+        },
+      });
+
+      await tx.notification.create({
+        data: {
+          recipientId: product.sellerShop.owner.id,
+          actorId: bidder.id,
+          type: "BID_PLACED",
+          title: "มีผู้เสนอราคาใหม่",
+          message: `${bidder.displayName} เสนอราคา ${Math.round(input.amountCents / 100).toLocaleString("th-TH")} บาท สำหรับ ${updatedProduct.title}`,
+          href: "/account/auctions",
+          productId: updatedProduct.id,
+          bidId: bid.id,
+        },
+      });
+
+      if (previousBidderIds.length > 0) {
+        await tx.notification.createMany({
+          data: previousBidderIds.map((recipientId) => ({
+            recipientId,
+            actorId: bidder.id,
+            type: "BID_OUTBID" as const,
+            title: "มีคนเสนอราคาสูงกว่า",
+            message: `${updatedProduct.title} มีราคาใหม่สูงกว่าราคาของคุณ`,
+            href: "/account/auctions",
+            productId: updatedProduct.id,
+            bidId: bid.id,
+          })),
+        });
+      }
+
       return { bid, product: updatedProduct };
     });
 
@@ -82,4 +148,3 @@ export const POST = async (request: NextRequest) => {
     return unknownError(error);
   }
 };
-

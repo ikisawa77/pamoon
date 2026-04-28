@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Bell,
   BookOpen,
   Building2,
   ChevronDown,
@@ -66,6 +65,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { NotificationBell } from "@/components/shared/NotificationBell";
 import { cn } from "@/lib/utils";
 import { listingSchema, shopRegistrationSchema, topUpSchema } from "@/lib/schemas";
 import type {
@@ -122,6 +122,17 @@ interface CreateProductResponse {
   ok: boolean;
   product?: {
     id: string;
+  };
+  error?: {
+    message: string;
+  };
+}
+
+interface CreateOrderResponse {
+  ok: boolean;
+  user?: {
+    walletBalanceCents: number;
+    bidLimitCents: number;
   };
   error?: {
     message: string;
@@ -241,7 +252,40 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
         return;
       }
 
-      setWallet((current) => ({ ...current, balance: current.balance - product.currentPrice }));
+      if (initialData.currentUserId) {
+        try {
+          const response = await fetch("/api/orders", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              productId: product.id,
+              buyerId: initialData.currentUserId,
+            }),
+          });
+          const result = (await response.json()) as CreateOrderResponse;
+
+          if (!response.ok || !result.ok || !result.user) {
+            setNotice(result.error?.message ?? "สั่งซื้อไม่สำเร็จ");
+            return;
+          }
+
+          const updatedUser = result.user;
+
+          setWallet((current) => ({
+            ...current,
+            balance: Math.round(updatedUser.walletBalanceCents / 100),
+            bidLimit: Math.round(updatedUser.bidLimitCents / 100),
+          }));
+          setProducts((current) => current.filter((item) => item.id !== product.id));
+        } catch {
+          setNotice("เชื่อมต่อ API คำสั่งซื้อไม่ได้");
+          return;
+        }
+      } else {
+        setWallet((current) => ({ ...current, balance: current.balance - product.currentPrice }));
+      }
       addActivity("ซื้อสินค้า", `${product.title} ${formatMoney(product.currentPrice, true)}`);
       setNotice(`ซื้อสำเร็จ: ${product.title} จาก ${product.seller}`);
       return;
@@ -641,12 +685,7 @@ const SiteHeader = ({ viewer, wallet, onOpenTopUp, onOpenListing }: SiteHeaderPr
         <Button type="button" className="shrink-0 bg-wallet text-wallet-foreground hover:bg-wallet/90" onClick={onOpenTopUp}>
           เติมเงิน
         </Button>
-        <Button asChild variant="ghost" size="icon" className="relative shrink-0" aria-label="แจ้งเตือน">
-          <Link href="/notifications">
-          <Bell />
-          <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">3</span>
-          </Link>
-        </Button>
+        <NotificationBell className="relative shrink-0" />
         <Button asChild variant="ghost" size="icon" className="shrink-0" aria-label="ตะกร้า">
           <Link href="/cart">
           <ShoppingCart />

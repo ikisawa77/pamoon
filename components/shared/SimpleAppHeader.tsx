@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Bell, BookOpen, CircleHelp, CreditCard, ShoppingCart, Store, Trophy, Wallet } from "lucide-react";
+import { BookOpen, CircleHelp, CreditCard, ShoppingCart, Store, Trophy, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { NotificationBell } from "@/components/shared/NotificationBell";
 
 const navItems = [
   { label: "ประมูล", href: "/auctions", icon: Trophy },
@@ -40,11 +41,7 @@ const SimpleAppHeader = () => (
             กระเป๋าเงิน
           </Link>
         </Button>
-        <Button asChild variant="ghost" size="icon" aria-label="แจ้งเตือน">
-          <Link href="/notifications">
-            <Bell />
-          </Link>
-        </Button>
+        <NotificationBell />
         <Button asChild variant="ghost" size="icon" aria-label="ตะกร้า">
           <Link href="/cart">
             <ShoppingCart />

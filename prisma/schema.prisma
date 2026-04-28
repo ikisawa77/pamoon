@@ -90,6 +90,17 @@ enum OrderStatus {
   DISPUTED
 }
 
+enum NotificationType {
+  ORDER_CREATED
+  ORDER_PAID
+  ORDER_SHIPPED
+  BID_PLACED
+  BID_OUTBID
+  BID_WINNING
+  SHOP_MESSAGE
+  SYSTEM
+}
+
 model User {
   id                 String              @id @default(cuid())
   email              String              @unique @db.VarChar(191)
@@ -105,6 +116,8 @@ model User {
   bids               Bid[]
   walletTransactions WalletTransaction[]
   orders             Order[]
+  notifications      Notification[]      @relation("NotificationRecipient")
+  sentNotifications  Notification[]      @relation("NotificationActor")
 
   @@index([role])
   @@index([status])
@@ -153,6 +166,7 @@ model Product {
   sellerShop         Shop            @relation(fields: [sellerShopId], references: [id], onDelete: Cascade)
   bids               Bid[]
   order              Order?
+  notifications      Notification[]
 
   @@index([sellerShopId])
   @@index([mode, status])
@@ -170,6 +184,7 @@ model Bid {
   createdAt   DateTime  @default(now())
   product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
   bidder      User      @relation(fields: [bidderId], references: [id], onDelete: Cascade)
+  notifications Notification[]
 
   @@index([productId])
   @@index([bidderId])
@@ -209,9 +224,36 @@ model Order {
   product            Product     @relation(fields: [productId], references: [id], onDelete: Restrict)
   buyer              User        @relation(fields: [buyerId], references: [id], onDelete: Restrict)
   sellerShop         Shop        @relation(fields: [sellerShopId], references: [id], onDelete: Restrict)
+  notifications      Notification[]
 
   @@index([buyerId])
   @@index([sellerShopId])
   @@index([status])
 }
 
+model Notification {
+  id          String           @id @default(cuid())
+  recipientId String
+  actorId     String?
+  type        NotificationType
+  title       String           @db.VarChar(160)
+  message     String           @db.VarChar(500)
+  href        String?          @db.VarChar(255)
+  productId   String?
+  orderId     String?
+  bidId       String?
+  readAt      DateTime?
+  createdAt   DateTime         @default(now())
+  recipient   User             @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor       User?            @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  product     Product?         @relation(fields: [productId], references: [id], onDelete: SetNull)
+  order       Order?           @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  bid         Bid?             @relation(fields: [bidId], references: [id], onDelete: SetNull)
+
+  @@index([recipientId, readAt, createdAt])
+  @@index([actorId])
+  @@index([type])
+  @@index([productId])
+  @@index([orderId])
+  @@index([bidId])
+}

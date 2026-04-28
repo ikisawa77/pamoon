@@ -58,6 +58,7 @@ const getRequiredEnv = (key: string) => {
 };
 
 const main = async () => {
+  await prisma.notification.deleteMany();
   await prisma.order.deleteMany();
   await prisma.bid.deleteMany();
   await prisma.walletTransaction.deleteMany();
@@ -168,7 +169,71 @@ const main = async () => {
     }),
   });
 
-  console.log("Seed completed: admin, users, shops, wallet transaction, and 160 products created.");
+  const firstAuction = await prisma.product.findFirst({
+    where: { mode: "AUCTION" },
+    include: {
+      sellerShop: {
+        include: {
+          owner: true,
+        },
+      },
+    },
+  });
+  const firstBuyNow = await prisma.product.findFirst({
+    where: { mode: "BUY" },
+    include: {
+      sellerShop: {
+        include: {
+          owner: true,
+        },
+      },
+    },
+  });
+
+  if (firstAuction && firstBuyNow) {
+    await prisma.notification.createMany({
+      data: [
+        {
+          recipientId: member.id,
+          actorId: firstAuction.sellerShop.owner.id,
+          type: "BID_WINNING",
+          title: "คุณกำลังชนะประมูล",
+          message: `${firstAuction.title} ยังเป็นราคานำของคุณ`,
+          href: "/account/auctions",
+          productId: firstAuction.id,
+        },
+        {
+          recipientId: firstAuction.sellerShop.owner.id,
+          actorId: member.id,
+          type: "BID_PLACED",
+          title: "มีผู้เสนอราคาใหม่",
+          message: `Demo Member เสนอราคาสำหรับ ${firstAuction.title}`,
+          href: "/account/auctions",
+          productId: firstAuction.id,
+        },
+        {
+          recipientId: member.id,
+          actorId: firstBuyNow.sellerShop.owner.id,
+          type: "ORDER_CREATED",
+          title: "ตัวอย่างคำสั่งซื้อพร้อมทดสอบ",
+          message: `ทดลองแจ้งเตือนคำสั่งซื้อจาก ${firstBuyNow.sellerShop.name}`,
+          href: "/account/orders",
+          productId: firstBuyNow.id,
+        },
+        {
+          recipientId: firstBuyNow.sellerShop.owner.id,
+          actorId: member.id,
+          type: "ORDER_PAID",
+          title: "ตัวอย่างร้านค้าได้รับคำสั่งซื้อ",
+          message: `Demo Member สั่งซื้อ ${firstBuyNow.title}`,
+          href: "/account/orders",
+          productId: firstBuyNow.id,
+        },
+      ],
+    });
+  }
+
+  console.log("Seed completed: admin, users, shops, wallet transaction, notifications, and 160 products created.");
 };
 
 main()

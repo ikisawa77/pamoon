@@ -41,6 +41,18 @@ export const topUpApiSchema = z.object({
   amountCents: z.coerce.number().int().min(100),
 });
 
+export const createOrderApiSchema = z.object({
+  productId: z.string().min(1),
+  buyerId: z.string().min(1),
+  shippingName: z.string().min(2).max(120).optional(),
+  shippingAddress: z.string().min(5).max(1000).optional(),
+});
+
+export const notificationQuerySchema = z.object({
+  status: z.enum(["all", "unread"]).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+});
+
 export const loginSchema = z.object({
   email: z.string().email().max(191),
   password: z.string().min(1).max(128),
@@ -52,4 +64,6 @@ export type ListingInput = z.infer<typeof listingSchema>;
 export type CreateProductApiInput = z.infer<typeof createProductApiSchema>;
 export type CreateBidApiInput = z.infer<typeof createBidApiSchema>;
 export type TopUpApiInput = z.infer<typeof topUpApiSchema>;
+export type CreateOrderApiInput = z.infer<typeof createOrderApiSchema>;
+export type NotificationQueryInput = z.infer<typeof notificationQuerySchema>;
 export type LoginInput = z.infer<typeof loginSchema>;

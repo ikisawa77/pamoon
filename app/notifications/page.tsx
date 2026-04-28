@@ -1,60 +1,59 @@
 import { Bell } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { StorefrontPageLayout } from "@/components/shared/StorefrontPageLayout";
+import { NotificationsClient } from "@/components/shared/NotificationsClient";
+import { getCurrentUser } from "@/lib/auth/current-user";
 import { prisma } from "@/lib/db/prisma";
 
 export const dynamic = "force-dynamic";
 
 const NotificationsPage = async () => {
-  const [products, transactions] = await Promise.all([
-    prisma.product.findMany({
-      where: { status: "ACTIVE" },
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return (
+      <StorefrontPageLayout title="แจ้งเตือน" description="เข้าสู่ระบบเพื่อดูแจ้งเตือนการสั่งซื้อ การประมูล และข้อความจากร้านค้า">
+        <Card>
+          <CardContent className="flex flex-col items-center gap-3 p-10 text-center text-muted-foreground">
+            <Bell />
+            <strong className="text-foreground">ยังไม่ได้เข้าสู่ระบบ</strong>
+            <span>เมื่อเข้าสู่ระบบแล้ว ระบบจะแสดงแจ้งเตือนแบบ realtime จากการสั่งซื้อและการประมูลของคุณ</span>
+          </CardContent>
+        </Card>
+      </StorefrontPageLayout>
+    );
+  }
+
+  const [notifications, unreadCount] = await Promise.all([
+    prisma.notification.findMany({
+      where: { recipientId: user.id },
       orderBy: { createdAt: "desc" },
-      take: 5,
+      take: 80,
       include: {
-        sellerShop: {
-          select: { name: true },
+        actor: {
+          select: {
+            displayName: true,
+            role: true,
+          },
+        },
+        product: {
+          select: {
+            title: true,
+          },
         },
       },
     }),
-    prisma.walletTransaction.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 5,
-      include: {
-        user: {
-          select: { email: true },
-        },
+    prisma.notification.count({
+      where: {
+        recipientId: user.id,
+        readAt: null,
       },
     }),
   ]);
 
   return (
-    <StorefrontPageLayout title="แจ้งเตือน" description="รวมความเคลื่อนไหวล่าสุดจากสินค้าและธุรกรรมในระบบ">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bell />
-            รายการล่าสุด
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-2">
-          {products.map((product) => (
-            <div key={product.id} className="rounded-md border bg-background p-4">
-              <Badge>{product.mode === "AUCTION" ? "ประมูลใหม่" : "ซื้อเลยใหม่"}</Badge>
-              <strong className="mt-2 block">{product.title}</strong>
-              <span className="text-sm text-muted-foreground">{product.sellerShop.name}</span>
-            </div>
-          ))}
-          {transactions.map((transaction) => (
-            <div key={transaction.id} className="rounded-md border bg-background p-4">
-              <Badge variant="outline">{transaction.status}</Badge>
-              <strong className="mt-2 block">{transaction.type}</strong>
-              <span className="text-sm text-muted-foreground">{transaction.user.email}</span>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+    <StorefrontPageLayout title="แจ้งเตือน" description="ระบบแจ้งเตือนการสั่งซื้อ การประมูล และการสื่อสารระหว่างสมาชิกกับร้านค้า">
+      <NotificationsClient initialNotifications={notifications} initialUnreadCount={unreadCount} />
     </StorefrontPageLayout>
   );
 };
