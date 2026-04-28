@@ -148,6 +148,13 @@ const AuctionDetailClient = ({ product: initialProduct, viewer }: AuctionDetailC
     }
 
     const amountCents = Math.round(Number(bidAmount) * 100);
+    const confirmed = window.confirm(`ยืนยันการบิด ${product.title} ที่ราคา ${money(amountCents)} หรือไม่`);
+
+    if (!confirmed) {
+      setNotice("ยกเลิกการบิดแล้ว");
+      return;
+    }
+
     const response = await fetch("/api/bids", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

@@ -22,7 +22,7 @@ const CartPage = async () => {
   });
 
   return (
-    <StorefrontPageLayout title="ตะกร้าสินค้า" description="เลือกสินค้าซื้อเลยเข้าตะกร้าและดูยอดรวมทันที สำหรับทดสอบ flow ก่อนต่อระบบชำระเงินจริง">
+    <StorefrontPageLayout title="ตะกร้าสินค้า" description="ตรวจรายการการ์ดที่เพิ่มไว้ก่อนเข้าสู่ขั้นตอนชำระเงิน">
       <CartClient
         products={products.map((product) => ({
           id: product.id,
@@ -30,6 +30,7 @@ const CartPage = async () => {
           seller: product.sellerShop.name,
           rarity: product.rarity,
           priceCents: product.currentPriceCents,
+          imageUrl: product.imageUrl,
         }))}
       />
     </StorefrontPageLayout>

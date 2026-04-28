@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { apiError, unknownError, validationError } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { CARD_GAME_NAME, getCardSetDefinition } from "@/lib/card-catalog";
 import { createProductApiSchema } from "@/lib/schemas";
 import type { ListingMode, ProductCategory, ProductRarity } from "@/types/marketplace";
 
@@ -79,6 +80,7 @@ export const POST = async (request: NextRequest) => {
     }
 
     const input = parsed.data;
+    const cardSet = getCardSetDefinition(input.category);
     const sellerShop = await prisma.shop.findFirst({
       where: {
         ownerId: user.id,
@@ -99,13 +101,13 @@ export const POST = async (request: NextRequest) => {
         sellerShopId: sellerShop.id,
         title: input.title,
         cardCode: input.code,
-        setCode: input.series,
-        setName: input.series,
+        setCode: cardSet.setCode,
+        setName: cardSet.setName,
         category: mapCategory(input.category),
         rarity: mapRarity(input.rarity),
         mode: mapMode(input.mode),
         conditionLabel: input.condition,
-        description: input.description,
+        description: `${CARD_GAME_NAME}\n${cardSet.label}\n${input.description}`,
         imageUrl: input.imageUrl,
         openingPriceCents: input.openingPrice * 100,
         currentPriceCents: priceCents,

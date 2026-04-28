@@ -66,6 +66,7 @@ import {
 } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { NotificationBell } from "@/components/shared/NotificationBell";
+import { CARD_GAME_NAME, cardSetDefinitions, getCardSetDefinition } from "@/lib/card-catalog";
 import { cn } from "@/lib/utils";
 import { listingSchema, shopRegistrationSchema, topUpSchema } from "@/lib/schemas";
 import type {
@@ -298,6 +299,13 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
       return;
     }
 
+    const confirmed = window.confirm(`ยืนยันการบิด ${product.title} ที่ราคา ${formatMoney(product.nextBid, true)} หรือไม่`);
+
+    if (!confirmed) {
+      setNotice("ยกเลิกการบิดแล้ว");
+      return;
+    }
+
     if (initialData.currentUserId) {
       try {
         const response = await fetch("/api/bids", {
@@ -438,15 +446,16 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
 
     const parsed = listingSchema.safeParse({
       mode: listingMode,
+      game: CARD_GAME_NAME,
       category: formData.get("category"),
       title: formData.get("title"),
-      series: formData.get("series"),
       code: formData.get("code"),
       rarity: formData.get("rarity"),
       openingPrice: formData.get("openingPrice"),
       buyNowPrice: formData.get("buyNowPrice"),
       duration: formData.get("duration"),
       condition: formData.get("condition"),
+      description: formData.get("description"),
     });
 
     if (!parsed.success) {
@@ -455,6 +464,7 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
     }
 
     const listing = parsed.data;
+    const cardSet = getCardSetDefinition(listing.category);
     const price = listing.mode === "auction" ? listing.openingPrice : listing.buyNowPrice;
     let createdProductId = `listing-${Date.now()}`;
 
@@ -467,7 +477,6 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
           },
           body: JSON.stringify({
             ...listing,
-            sellerShopId: initialData.primaryShopId,
           }),
         });
         const result = (await response.json()) as CreateProductResponse;
@@ -487,7 +496,7 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
     const newProduct: AuctionProduct = {
       id: createdProductId,
       title: listing.title,
-      code: `${listing.series} ${listing.code}`,
+      code: `${listing.code} · ${cardSet.label}`,
       seller: isAdmin ? "Admin Dev Shop" : "CardHunter Shop",
       shopId: isAdmin ? "admin-dev-shop" : "cardhunter",
       topBidder: "เธฃเธญเธเธนเนเน€เธชเธเธญเธฃเธฒเธเธฒ",
@@ -1273,28 +1282,26 @@ const ListingSheet = ({ open, mode, onModeChange, onOpenChange, onSubmit }: List
               <ModeButton active={mode === "buy"} title="เธเธทเนเธญเน€เธฅเธข" detail="เธฃเธฒเธเธฒเธเธเธ—เธตเนเธ—เธฑเธเธ—เธต" onClick={() => onModeChange("buy")} />
             </div>
 
-            <Select name="category" defaultValue="op01">
+            <input type="hidden" name="game" value={CARD_GAME_NAME} />
+            <Select name="category" defaultValue="op01" required>
               <SelectTrigger>
-                <SelectValue placeholder="เน€เธฅเธทเธญเธ SET" />
+                <SelectValue placeholder="เลือกชุดการ์ด" />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  <SelectItem value="op01">OP-01 ROMANCE DAWN</SelectItem>
-                  <SelectItem value="op02">OP-02 PARAMOUNT WAR</SelectItem>
-                  <SelectItem value="op03">OP-03 PILLARS OF STRENGTH</SelectItem>
-                  <SelectItem value="op04">OP-04 KINGDOMS OF INTRIGUE</SelectItem>
-                  <SelectItem value="op05">OP-05 AWAKENING OF THE NEW ERA</SelectItem>
+                  {cardSetDefinitions.map((set) => (
+                    <SelectItem key={set.category} value={set.category}>{set.label}</SelectItem>
+                  ))}
                 </SelectGroup>
               </SelectContent>
             </Select>
 
-            <Input name="title" defaultValue="Monkey D. Luffy (SEC)" placeholder="เธเธทเนเธญเธเธฒเธฃเนเธ”" />
+            <Input name="title" required defaultValue="Yamato (SEC)" placeholder="ชื่อการ์ด" />
             <div className="grid gap-3 sm:grid-cols-3">
-              <Input name="series" defaultValue="OP01" placeholder="เธเธตเธฃเธตเธชเน" />
-              <Input name="code" defaultValue="119" placeholder="เธฃเธซเธฑเธชเธเธฒเธฃเนเธ”" />
-              <Select name="rarity" defaultValue="SEC">
+              <Input name="code" required defaultValue="OP01-121" pattern="OP[0-9]{2}-[0-9]{3}" placeholder="รหัสการ์ด เช่น OP01-121" />
+              <Select name="rarity" defaultValue="SEC" required>
                 <SelectTrigger>
-                  <SelectValue placeholder="เธฃเธฐเธ”เธฑเธเธเธงเธฒเธกเธซเธฒเธขเธฒเธ" />
+                  <SelectValue placeholder="ระดับความหายาก" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
@@ -1304,10 +1311,11 @@ const ListingSheet = ({ open, mode, onModeChange, onOpenChange, onSubmit }: List
                   </SelectGroup>
                 </SelectContent>
               </Select>
+              <Input name="condition" required defaultValue="Near Mint (NM)" placeholder="สภาพการ์ด" />
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
-              <Input name="openingPrice" type="number" min={100} defaultValue={1000} placeholder="เธฃเธฒเธเธฒเน€เธฃเธดเนเธก" />
-              <Input name="buyNowPrice" type="number" min={0} defaultValue={12750} placeholder="เธฃเธฒเธเธฒเธเธทเนเธญเน€เธฅเธข" />
+              <Input name="openingPrice" required type="number" min={100} defaultValue={1000} placeholder="ราคาเปิดประมูล" />
+              <Input name="buyNowPrice" required type="number" min={0} defaultValue={12750} placeholder="ราคาซื้อเลย" />
               <Select name="duration" defaultValue="3 เธงเธฑเธ">
                 <SelectTrigger>
                   <SelectValue placeholder="เธฃเธฐเธขเธฐเน€เธงเธฅเธฒ" />
@@ -1321,7 +1329,7 @@ const ListingSheet = ({ open, mode, onModeChange, onOpenChange, onSubmit }: List
                 </SelectContent>
               </Select>
             </div>
-            <Input name="condition" defaultValue="Near Mint" placeholder="เธชเธ เธฒเธเธเธฒเธฃเนเธ”" />
+            <Input name="description" required defaultValue="การ์ดจริงพร้อมส่ง ตรวจสภาพแล้วก่อนลงขาย รูปตรงกับสินค้าที่ลงรายการ" placeholder="รายละเอียดสินค้าแบบครบถ้วน" />
             <div className="flex flex-wrap gap-2">
               {["Mint (M)", "Near Mint (NM)", "Excellent (EX)", "Good (G)", "Played (P)"].map((condition) => (
                 <Badge key={condition} variant={condition === "Near Mint (NM)" ? "default" : "outline"}>{condition}</Badge>

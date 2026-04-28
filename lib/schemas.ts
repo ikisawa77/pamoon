@@ -13,20 +13,20 @@ export const shopRegistrationSchema = z.object({
 
 export const listingSchema = z.object({
   mode: z.enum(["auction", "buy"]),
+  game: z.literal("One Piece Card Game (Japanese)"),
   category: z.enum(["op01", "op02", "op03", "op04", "op05"]),
   title: z.string().min(2).max(120),
-  series: z.string().min(1).max(60),
-  code: z.string().min(1).max(40),
+  code: z.string().trim().regex(/^OP\d{2}-\d{3}$/i, "Card code must look like OP01-121").transform((value) => value.toUpperCase()),
   rarity: z.enum(["C", "UC", "R", "L", "SR", "SEC", "SP", "P"]),
   openingPrice: z.coerce.number().int().min(100).max(500000),
   buyNowPrice: z.coerce.number().int().min(0).max(500000),
   duration: z.string().min(1).max(40),
   condition: z.string().min(1).max(40),
+  description: z.string().trim().min(10).max(2000),
 });
 
 export const createProductApiSchema = listingSchema.extend({
-  sellerShopId: z.string().min(1),
-  description: z.string().max(2000).optional(),
+  sellerShopId: z.string().min(1).optional(),
   imageUrl: z.string().url().optional(),
 });
 
@@ -43,7 +43,7 @@ export const topUpApiSchema = z.object({
 
 export const createOrderApiSchema = z.object({
   productId: z.string().min(1),
-  buyerId: z.string().min(1),
+  buyerId: z.string().min(1).optional(),
   shippingName: z.string().min(2).max(120).optional(),
   shippingAddress: z.string().min(5).max(1000).optional(),
 });

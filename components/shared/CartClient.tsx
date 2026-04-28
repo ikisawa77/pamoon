@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { Minus, Plus, ShoppingCart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ interface CartProduct {
   seller: string;
   rarity: string;
   priceCents: number;
+  imageUrl?: string | null;
 }
 
 interface CartLine extends CartProduct {
@@ -22,6 +24,8 @@ interface CartClientProps {
   products: CartProduct[];
 }
 
+const CART_STORAGE_KEY = "bidcard.cart";
+
 const moneyFromCents = (value: number) =>
   new Intl.NumberFormat("th-TH", {
     style: "currency",
@@ -31,8 +35,29 @@ const moneyFromCents = (value: number) =>
     .format(value / 100)
     .replace("THB", "฿");
 
+const readStoredCart = () => {
+  try {
+    const raw = window.localStorage.getItem(CART_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as CartLine[]) : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeStoredCart = (lines: CartLine[]) => {
+  window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(lines));
+};
+
 const CartClient = ({ products }: CartClientProps) => {
   const [cartLines, setCartLines] = useState<CartLine[]>([]);
+
+  useEffect(() => {
+    setCartLines(readStoredCart());
+  }, []);
+
+  useEffect(() => {
+    writeStoredCart(cartLines);
+  }, [cartLines]);
 
   const cartTotalCents = useMemo(
     () => cartLines.reduce((total, line) => total + line.priceCents * line.quantity, 0),
@@ -65,12 +90,14 @@ const CartClient = ({ products }: CartClientProps) => {
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
       <Card>
         <CardHeader>
-          <CardTitle>สินค้าแบบซื้อเลย</CardTitle>
+          <CardTitle>สินค้าซื้อเลย</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {products.map((product, index) => (
+          {products.map((product) => (
             <div key={product.id} className="rounded-md border bg-background p-3">
-              <div className={`product-art object-pos-${(index % 3) + 1} mb-3 aspect-[4/3] rounded-md bg-muted`} />
+              <div className="relative mb-3 aspect-[4/3] overflow-hidden rounded-md bg-muted">
+                {product.imageUrl ? <Image src={product.imageUrl} alt={product.title} fill sizes="(min-width: 1280px) 25vw, 50vw" className="object-contain" /> : null}
+              </div>
               <Badge variant="outline">{product.rarity}</Badge>
               <strong className="mt-2 block">{product.title}</strong>
               <span className="block text-sm text-muted-foreground">{product.seller}</span>
@@ -95,7 +122,7 @@ const CartClient = ({ products }: CartClientProps) => {
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {cartLines.length === 0 ? (
-            <p className="text-sm text-muted-foreground">เลือกสินค้าจากรายการด้านซ้ายเพื่อเริ่มทดสอบตะกร้า</p>
+            <p className="text-sm text-muted-foreground">เลือกสินค้าจากรายการด้านซ้าย หรือเพิ่มจากหน้ารายละเอียดการ์ด</p>
           ) : (
             cartLines.map((line) => (
               <div key={line.id} className="flex items-start justify-between gap-3 border-b pb-3 last:border-b-0 last:pb-0">

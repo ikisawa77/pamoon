@@ -224,6 +224,15 @@ const ProductCatalogClient = ({ initialData, mode, title, subtitle, eyebrow }: P
       return;
     }
 
+    if (product.mode === "auction") {
+      const confirmed = window.confirm(`ยืนยันการบิด ${product.title} ที่ราคา ${money(product.nextBid)} หรือไม่`);
+
+      if (!confirmed) {
+        setNotice("ยกเลิกการบิดแล้ว");
+        return;
+      }
+    }
+
     const response = await fetch(product.mode === "auction" ? "/api/bids" : "/api/orders", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -415,7 +424,7 @@ const AuctionCard = ({ product, now, onAction, onToggleFavorite }: AuctionCardPr
 
   return (
     <article className="group overflow-hidden rounded-xl border bg-background shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
-      <Link href={product.mode === "auction" ? `/auctions/${product.id}` : "/buy-now"} className="block">
+      <Link href={product.mode === "auction" ? `/auctions/${product.id}` : `/buy-now/${product.id}`} className="block">
         <div className={cn("product-art relative aspect-[100/140] overflow-hidden bg-muted", product.imagePositionClass)}>
           {product.imageUrl ? (
             <Image src={product.imageUrl} alt={product.title} fill sizes="(min-width: 1536px) 12vw, (min-width: 1024px) 25vw, 50vw" className="object-cover transition duration-300 group-hover:scale-105" />
@@ -435,7 +444,7 @@ const AuctionCard = ({ product, now, onAction, onToggleFavorite }: AuctionCardPr
             {product.watchers}
           </button>
         </div>
-        <Link href={product.mode === "auction" ? `/auctions/${product.id}` : "/buy-now"} className="grid gap-1">
+        <Link href={product.mode === "auction" ? `/auctions/${product.id}` : `/buy-now/${product.id}`} className="grid gap-1">
           <h2 className="line-clamp-2 min-h-10 font-semibold underline-offset-2 group-hover:underline">{product.title}</h2>
           <p className="line-clamp-2 min-h-10 text-xs text-muted-foreground">{product.code}</p>
         </Link>
@@ -451,10 +460,19 @@ const AuctionCard = ({ product, now, onAction, onToggleFavorite }: AuctionCardPr
           </span>
           {product.isFavorite ? <span className="inline-flex items-center gap-1 text-primary"><Bell className="size-4" />อีเมล</span> : null}
         </div>
-        <Button type="button" size="sm" onClick={() => onAction(product)}>
-          {product.mode === "auction" ? `บิด ${money(product.nextBid)}` : "ซื้อเลย"}
-          <ChevronRight data-icon="inline-end" />
-        </Button>
+        {product.mode === "auction" ? (
+          <Button type="button" size="sm" onClick={() => onAction(product)}>
+            บิด {money(product.nextBid)}
+            <ChevronRight data-icon="inline-end" />
+          </Button>
+        ) : (
+          <Button asChild size="sm">
+            <Link href={`/buy-now/${product.id}`}>
+              ดูรายละเอียด
+              <ChevronRight data-icon="inline-end" />
+            </Link>
+          </Button>
+        )}
       </div>
     </article>
   );
