@@ -74,7 +74,7 @@ export const getMarketplaceSnapshot = cache(
             },
           },
           orderBy: [{ mode: "asc" }, { auctionEndsAt: "asc" }, { createdAt: "desc" }],
-          take: 160,
+          take: 200,
         }),
         viewer?.id
           ? prisma.user.findUnique({

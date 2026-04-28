@@ -6,8 +6,8 @@ import { createBidApiSchema } from "@/lib/schemas";
 
 export const runtime = "nodejs";
 
-const ANTI_SNIPE_WINDOW_MS = 5 * 60 * 1000;
-const ANTI_SNIPE_EXTENSION_MS = 5 * 60 * 1000;
+const ANTI_SNIPE_WINDOW_MS = 15 * 1000;
+const ANTI_SNIPE_EXTENSION_MS = 15 * 1000;
 
 const money = (amountCents: number) => Math.round(amountCents / 100).toLocaleString("th-TH");
 
@@ -190,7 +190,7 @@ export const POST = async (request: NextRequest) => {
               actorId: bidder.id,
               type: "SYSTEM" as const,
               title: "ต่อเวลาประมูลอัตโนมัติ",
-              message: `${updatedProduct.title} ถูกต่อเวลาอีก 5 นาที เพราะมีการเสนอราคาในช่วงท้าย`,
+              message: `${updatedProduct.title} ถูกต่อเวลาอีก 15 วินาที เพราะมีการเสนอราคาในช่วงท้าย`,
               href: `/auctions/${updatedProduct.id}`,
               productId: updatedProduct.id,
               bidId: bid.id,
@@ -200,7 +200,7 @@ export const POST = async (request: NextRequest) => {
               actorId: bidder.id,
               type: "SYSTEM" as const,
               title: "ต่อเวลาประมูลอัตโนมัติ",
-              message: `${updatedProduct.title} ถูกต่อเวลาอีก 5 นาที`,
+              message: `${updatedProduct.title} ถูกต่อเวลาอีก 15 วินาที`,
               href: `/auctions/${updatedProduct.id}`,
               productId: updatedProduct.id,
               bidId: bid.id,

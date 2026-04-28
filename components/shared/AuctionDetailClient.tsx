@@ -243,7 +243,7 @@ const AuctionDetailClient = ({ product: initialProduct, viewer }: AuctionDetailC
             </div>
             <CountdownPill remaining={remaining} />
             <p className="mt-3 text-center text-xs text-muted-foreground">
-              เงื่อนไข: หากมี bid ในช่วง 5 นาทีสุดท้าย ระบบจะต่อเวลาอีก 5 นาทีอัตโนมัติ
+              เงื่อนไข: หากมี bid ในช่วง 15 วินาทีสุดท้าย ระบบจะต่อเวลาอีก 15 วินาทีอัตโนมัติ หากไม่มีคนบิดต่อ ผู้เสนอราคาคนล่าสุดจะชนะเมื่อหมดเวลา
             </p>
             <div className="mt-5 grid gap-3">
               <label className="text-sm font-semibold" htmlFor="bidAmount">ใส่ราคาประมูลของคุณ</label>

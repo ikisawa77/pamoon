@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   Bell,
+  ChevronLeft,
   ChevronRight,
   Clock3,
   CreditCard,
@@ -27,6 +28,7 @@ import type { AuctionProduct, ListingMode, MarketplaceSnapshot, ProductCategory,
 
 type CatalogMode = ListingMode | "all";
 type SortMode = "ending" | "latest" | "priceHigh" | "priceLow" | "popular";
+type ListingFilter = ListingMode | "all";
 
 interface ProductCatalogClientProps {
   initialData: MarketplaceSnapshot;
@@ -55,8 +57,10 @@ interface ActionResponse {
   };
 }
 
+const PAGE_SIZE = 48;
+
 const categoryLabels: Record<ProductCategory | "all", string> = {
-  all: "ทุกเซ็ต",
+  all: "ทุกชุด",
   op01: "OP-01",
   op02: "OP-02",
   op03: "OP-03",
@@ -65,6 +69,20 @@ const categoryLabels: Record<ProductCategory | "all", string> = {
 };
 
 const rarityOptions: Array<ProductRarity | "all"> = ["all", "C", "UC", "R", "L", "SR", "SEC", "SP", "P"];
+
+const listingLabels: Record<ListingFilter, string> = {
+  all: "ทั้งหมด",
+  auction: "ประมูล",
+  buy: "ซื้อเลย",
+};
+
+const sortLabels: Record<SortMode, string> = {
+  ending: "ใกล้หมดเวลา",
+  latest: "ล่าสุด",
+  popular: "นิยม",
+  priceHigh: "ราคาสูง",
+  priceLow: "ราคาต่ำ",
+};
 
 const money = (value: number) =>
   new Intl.NumberFormat("th-TH", {
@@ -103,13 +121,16 @@ const sortProducts = (products: AuctionProduct[], sortMode: SortMode) =>
 
 const ProductCatalogClient = ({ initialData, mode, title, subtitle, eyebrow }: ProductCatalogClientProps) => {
   const [products, setProducts] = useState(initialData.products);
+  const [queryInput, setQueryInput] = useState("");
   const [query, setQuery] = useState("");
+  const [listingFilter, setListingFilter] = useState<ListingFilter>(mode === "all" ? "all" : mode);
   const [rarity, setRarity] = useState<ProductRarity | "all">("all");
   const [category, setCategory] = useState<ProductCategory | "all">("all");
   const [sortMode, setSortMode] = useState<SortMode>(mode === "buy" ? "latest" : "ending");
   const [dockOpen, setDockOpen] = useState(false);
-  const [notice, setNotice] = useState("กดหัวใจเพื่อเพิ่มรายการโปรดและเปิดแจ้งเตือนอีเมลสำหรับประมูลที่ติดตาม");
+  const [notice, setNotice] = useState("ค้นหาชื่อการ์ดได้จากทั้งรายการประมูลและซื้อเลย ใช้ตัวกรองเพื่อจำกัดชุด ระดับ หรือประเภทสินค้า");
   const [now, setNow] = useState(() => Date.now());
+  const [page, setPage] = useState(1);
   const viewer = initialData.viewer;
   const isGuest = viewer.role === "GUEST";
 
@@ -118,28 +139,52 @@ const ProductCatalogClient = ({ initialData, mode, title, subtitle, eyebrow }: P
     return () => window.clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    setPage(1);
+  }, [category, listingFilter, query, rarity, sortMode]);
+
   const visibleProducts = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    const scopedProducts = products.filter((product) => mode === "all" || product.mode === mode);
 
     return sortProducts(
-      scopedProducts.filter((product) => {
+      products.filter((product) => {
+        const listingMatched = listingFilter === "all" || product.mode === listingFilter;
         const queryMatched =
           !normalizedQuery ||
-          `${product.title} ${product.code} ${product.seller} ${product.rarity}`.toLowerCase().includes(normalizedQuery);
+          `${product.title} ${product.code} ${product.seller} ${product.rarity} ${product.category}`
+            .toLowerCase()
+            .includes(normalizedQuery);
         const rarityMatched = rarity === "all" || product.rarity === rarity;
         const categoryMatched = category === "all" || product.category === category;
 
-        return queryMatched && rarityMatched && categoryMatched;
+        return listingMatched && queryMatched && rarityMatched && categoryMatched;
       }),
       sortMode,
     );
-  }, [category, mode, products, query, rarity, sortMode]);
+  }, [category, listingFilter, products, query, rarity, sortMode]);
 
+  const pageCount = Math.max(1, Math.ceil(visibleProducts.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const pagedProducts = visibleProducts.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const auctionCount = products.filter((product) => product.mode === "auction").length;
   const buyCount = products.filter((product) => product.mode === "buy").length;
   const favoriteCount = products.filter((product) => product.isFavorite).length;
-  const resultLabel = mode === "auction" ? "สินค้าประมูล" : mode === "buy" ? "สินค้าซื้อเลย" : "สินค้า";
+  const resultLabel = listingFilter === "auction" ? "สินค้าประมูล" : listingFilter === "buy" ? "สินค้าซื้อเลย" : "สินค้าทั้งหมด";
+
+  const submitSearch = () => {
+    setQuery(queryInput.trim());
+    setNotice(queryInput.trim() ? `กำลังค้นหา "${queryInput.trim()}" จากสินค้าประมูลและซื้อเลย` : "ล้างคำค้นหาแล้ว แสดงรายการตามตัวกรองปัจจุบัน");
+  };
+
+  const resetFilters = () => {
+    setQuery("");
+    setQueryInput("");
+    setListingFilter(mode === "all" ? "all" : mode);
+    setRarity("all");
+    setCategory("all");
+    setSortMode(mode === "buy" ? "latest" : "ending");
+    setNotice("ล้างตัวกรองแล้ว");
+  };
 
   const toggleFavorite = async (product: AuctionProduct) => {
     if (isGuest) {
@@ -211,7 +256,7 @@ const ProductCatalogClient = ({ initialData, mode, title, subtitle, eyebrow }: P
             : item,
         ),
       );
-      setNotice(`เสนอราคา ${product.title} สำเร็จ`);
+      setNotice(`เสนอราคา ${product.title} สำเร็จ หากมีคนบิดในช่วงท้าย ระบบจะต่อเวลา 15 วินาที`);
       return;
     }
 
@@ -224,7 +269,7 @@ const ProductCatalogClient = ({ initialData, mode, title, subtitle, eyebrow }: P
       <header className="sticky top-0 z-40 border-b bg-background/90 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex size-10 rotate-[-8deg] items-center justify-center rounded-md bg-primary text-primary-foreground">★</div>
+            <div className="flex size-10 rotate-[-8deg] items-center justify-center rounded-md bg-primary text-primary-foreground">*</div>
             <strong className="text-xl">BidCard TH</strong>
           </Link>
           <nav className="hidden items-center gap-2 md:flex">
@@ -248,10 +293,31 @@ const ProductCatalogClient = ({ initialData, mode, title, subtitle, eyebrow }: P
             <Badge className="mb-4">{eyebrow}</Badge>
             <h1 className="max-w-3xl text-4xl font-black leading-tight sm:text-6xl">{title}</h1>
             <p className="mt-4 max-w-2xl text-base text-muted-foreground">{subtitle}</p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Button type="button" onClick={() => setDockOpen(true)}>
+            <div className="mt-6 grid max-w-3xl gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={queryInput}
+                  onChange={(event) => setQueryInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") submitSearch();
+                  }}
+                  className="h-11 pl-9"
+                  placeholder="ค้นหาชื่อการ์ดจากประมูลและซื้อเลย"
+                />
+              </div>
+              <Button type="button" className="h-11" onClick={submitSearch}>
+                <Search data-icon="inline-start" />
+                ค้นหา
+              </Button>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Button type="button" variant="outline" onClick={() => setDockOpen(true)}>
                 <SlidersHorizontal data-icon="inline-start" />
                 เปิดตัวกรอง
+              </Button>
+              <Button type="button" variant="ghost" onClick={resetFilters}>
+                ล้างตัวกรอง
               </Button>
               <Button asChild variant="outline">
                 <Link href="/collection">
@@ -271,33 +337,65 @@ const ProductCatalogClient = ({ initialData, mode, title, subtitle, eyebrow }: P
         <section className="mt-6 flex flex-col gap-4">
           <div className="flex flex-col justify-between gap-3 rounded-2xl border bg-background p-4 md:flex-row md:items-center">
             <div className="min-w-0">
-              <strong className="block">{resultLabel}: {visibleProducts.length.toLocaleString("th-TH")} รายการ</strong>
+              <strong className="block">
+                {resultLabel}: {visibleProducts.length.toLocaleString("th-TH")} รายการ
+                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                  แสดง {pagedProducts.length.toLocaleString("th-TH")} ใบในหน้านี้
+                </span>
+              </strong>
               <span className="text-sm text-muted-foreground">{notice}</span>
             </div>
             <div className="flex flex-wrap gap-2">
-              {(["ending", "latest", "popular", "priceHigh", "priceLow"] as SortMode[]).map((sort) => (
+              {(Object.keys(sortLabels) as SortMode[]).map((sort) => (
                 <Button key={sort} type="button" size="sm" variant={sortMode === sort ? "default" : "outline"} onClick={() => setSortMode(sort)}>
-                  {sort === "ending" ? "ใกล้หมดเวลา" : sort === "latest" ? "ล่าสุด" : sort === "popular" ? "นิยม" : sort === "priceHigh" ? "ราคาสูง" : "ราคาต่ำ"}
+                  {sortLabels[sort]}
                 </Button>
               ))}
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8">
-            {visibleProducts.map((product) => (
+            {pagedProducts.map((product) => (
               <AuctionCard key={product.id} product={product} now={now} onAction={handleProductAction} onToggleFavorite={toggleFavorite} />
             ))}
           </div>
+
+          {visibleProducts.length === 0 ? (
+            <div className="rounded-2xl border bg-background p-8 text-center text-muted-foreground">
+              ไม่พบการ์ดตามคำค้นหา ลองเปลี่ยนชื่อการ์ดหรือปรับตัวกรองใหม่
+            </div>
+          ) : null}
+
+          {pageCount > 1 ? (
+            <div className="flex flex-col items-center justify-between gap-3 rounded-2xl border bg-background p-4 sm:flex-row">
+              <span className="text-sm text-muted-foreground">
+                หน้า {currentPage.toLocaleString("th-TH")} จาก {pageCount.toLocaleString("th-TH")} แสดงหน้าละ {PAGE_SIZE.toLocaleString("th-TH")} ใบ
+              </span>
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" disabled={currentPage === 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
+                  <ChevronLeft data-icon="inline-start" />
+                  ก่อนหน้า
+                </Button>
+                <Button type="button" variant="outline" disabled={currentPage === pageCount} onClick={() => setPage((value) => Math.min(pageCount, value + 1))}>
+                  ถัดไป
+                  <ChevronRight data-icon="inline-end" />
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </section>
       </main>
 
       <FilterDock
         open={dockOpen}
-        query={query}
+        queryInput={queryInput}
+        listingFilter={listingFilter}
         rarity={rarity}
         category={category}
         onOpenChange={setDockOpen}
-        onQueryChange={setQuery}
+        onQueryInputChange={setQueryInput}
+        onSubmitSearch={submitSearch}
+        onListingFilterChange={setListingFilter}
         onRarityChange={setRarity}
         onCategoryChange={setCategory}
       />
@@ -394,31 +492,64 @@ const Metric = ({ icon: Icon, label, value }: MetricProps) => (
 
 interface FilterDockProps {
   open: boolean;
-  query: string;
+  queryInput: string;
+  listingFilter: ListingFilter;
   rarity: ProductRarity | "all";
   category: ProductCategory | "all";
   onOpenChange: (open: boolean) => void;
-  onQueryChange: (query: string) => void;
+  onQueryInputChange: (query: string) => void;
+  onSubmitSearch: () => void;
+  onListingFilterChange: (mode: ListingFilter) => void;
   onRarityChange: (rarity: ProductRarity | "all") => void;
   onCategoryChange: (category: ProductCategory | "all") => void;
 }
 
-const FilterDock = ({ open, query, rarity, category, onOpenChange, onQueryChange, onRarityChange, onCategoryChange }: FilterDockProps) => (
+const FilterDock = ({
+  open,
+  queryInput,
+  listingFilter,
+  rarity,
+  category,
+  onOpenChange,
+  onQueryInputChange,
+  onSubmitSearch,
+  onListingFilterChange,
+  onRarityChange,
+  onCategoryChange,
+}: FilterDockProps) => (
   <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 lg:left-5 lg:top-1/2 lg:translate-x-0 lg:-translate-y-1/2">
     <div className={cn("flex items-end gap-2 rounded-3xl border bg-background/90 p-2 shadow-2xl backdrop-blur transition-all lg:flex-col", open && "items-stretch p-3")}>
       <Button type="button" size="icon" className="rounded-2xl" onClick={() => onOpenChange(!open)} aria-label="เปิดตัวกรอง">
         {open ? <X /> : <Filter />}
       </Button>
       {open ? (
-        <div className="grid w-[min(82vw,360px)] gap-3 lg:w-72">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input value={query} onChange={(event) => onQueryChange(event.target.value)} className="pl-9" placeholder="ค้นหาชื่อการ์ด ร้าน หรือรหัส" />
+        <div className="grid w-[min(86vw,390px)] gap-3 lg:w-80">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={queryInput}
+                onChange={(event) => onQueryInputChange(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") onSubmitSearch();
+                }}
+                className="pl-9"
+                placeholder="ค้นหาชื่อการ์ด"
+              />
+            </div>
+            <Button type="button" size="sm" onClick={onSubmitSearch}>ค้นหา</Button>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {(Object.keys(listingLabels) as ListingFilter[]).map((item) => (
+              <Button key={item} type="button" size="sm" variant={listingFilter === item ? "default" : "outline"} onClick={() => onListingFilterChange(item)}>
+                {listingLabels[item]}
+              </Button>
+            ))}
           </div>
           <div className="grid grid-cols-4 gap-2">
             {rarityOptions.map((item) => (
               <Button key={item} type="button" size="sm" variant={rarity === item ? "default" : "outline"} onClick={() => onRarityChange(item)}>
-                {item === "all" ? "ทั้งหมด" : item}
+                {item === "all" ? "ทุกระดับ" : item}
               </Button>
             ))}
           </div>
