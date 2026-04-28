@@ -140,8 +140,31 @@ const main = async () => {
       passwordHash: adminPasswordHash,
       role: "ADMIN",
       status: "ACTIVE",
-      walletBalanceCents: 0,
-      bidLimitCents: 0,
+      walletBalanceCents: 5000000,
+      bidLimitCents: 5000000,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await insert(connection, "WalletTransaction", {
+      id: id("wallet", 99),
+      userId: id("user", 1),
+      type: "TOP_UP",
+      status: "COMPLETED",
+      amountCents: 5000000,
+      referenceType: "ADMIN_TEST_SEED",
+      referenceId: null,
+      note: "ทุนทดสอบสำหรับผู้ดูแลระบบ",
+      createdAt: now,
+      updatedAt: now,
+    });
+    await insert(connection, "Shop", {
+      id: id("shop", 99),
+      ownerId: id("user", 1),
+      name: "Admin Dev Shop",
+      slug: "admin-dev-shop",
+      status: "APPROVED",
+      rating: 5,
+      reviewCount: 0,
       createdAt: now,
       updatedAt: now,
     });

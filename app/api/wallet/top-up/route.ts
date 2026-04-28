@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { apiError, unknownError, validationError } from "@/lib/api-response";
+import { getCurrentUser } from "@/lib/auth/current-user";
 import { topUpApiSchema } from "@/lib/schemas";
 
 export const runtime = "nodejs";
 
 export const POST = async (request: NextRequest) => {
   try {
+    const sessionUser = await getCurrentUser();
+
+    if (!sessionUser) {
+      return apiError("กรุณาเข้าสู่ระบบก่อนเติมเงิน", 401);
+    }
+
     const body = await request.json();
     const parsed = topUpApiSchema.safeParse(body);
 
@@ -17,10 +24,14 @@ export const POST = async (request: NextRequest) => {
     const input = parsed.data;
 
     const result = await prisma.$transaction(async (tx) => {
-      const user = await tx.user.findUnique({ where: { id: input.userId } });
+      const user = await tx.user.findUnique({ where: { id: sessionUser.id } });
 
       if (!user) {
         throw new Error("ไม่พบสมาชิกที่ต้องการเติมเงิน");
+      }
+
+      if (user.status !== "ACTIVE") {
+        throw new Error("บัญชีนี้ยังไม่พร้อมเติมเงิน");
       }
 
       const updatedUser = await tx.user.update({
@@ -44,7 +55,7 @@ export const POST = async (request: NextRequest) => {
           status: "COMPLETED",
           amountCents: input.amountCents,
           referenceType: "MANUAL_TOP_UP",
-          note: "เติมเงินตัวอย่างผ่าน API",
+          note: input.userId !== sessionUser.id ? "เติมเงินบัญชีตนเอง โดยไม่ใช้ userId จาก body" : "เติมเงินตัวอย่างผ่าน API",
         },
       });
 
@@ -60,4 +71,3 @@ export const POST = async (request: NextRequest) => {
     return unknownError(error);
   }
 };
-

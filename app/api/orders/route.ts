@@ -14,6 +14,10 @@ export const POST = async (request: NextRequest) => {
       return apiError("กรุณาเข้าสู่ระบบก่อนสั่งซื้อ", 401);
     }
 
+    if (user.status !== "ACTIVE") {
+      return apiError("บัญชีนี้ยังไม่พร้อมสั่งซื้อ", 403);
+    }
+
     const body = await request.json();
     const parsed = createOrderApiSchema.safeParse(body);
 
@@ -21,11 +25,10 @@ export const POST = async (request: NextRequest) => {
       return validationError(parsed.error);
     }
 
-    if (parsed.data.buyerId !== user.id) {
-      return apiError("ไม่สามารถสร้างคำสั่งซื้อแทนสมาชิกอื่นได้", 403);
-    }
-
-    const result = await createPaidBuyNowOrder(parsed.data);
+    const result = await createPaidBuyNowOrder({
+      ...parsed.data,
+      buyerId: user.id,
+    });
     return NextResponse.json({ ok: true, ...result }, { status: 201 });
   } catch (error: unknown) {
     if (error instanceof Error) {

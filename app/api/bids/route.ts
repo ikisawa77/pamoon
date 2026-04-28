@@ -1,12 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { apiError, unknownError, validationError } from "@/lib/api-response";
+import { getCurrentUser } from "@/lib/auth/current-user";
 import { createBidApiSchema } from "@/lib/schemas";
 
 export const runtime = "nodejs";
 
 export const POST = async (request: NextRequest) => {
   try {
+    const sessionUser = await getCurrentUser();
+
+    if (!sessionUser) {
+      return apiError("กรุณาเข้าสู่ระบบก่อนเสนอราคา", 401);
+    }
+
+    if (sessionUser.status !== "ACTIVE") {
+      return apiError("บัญชีนี้ยังไม่พร้อมเสนอราคา", 403);
+    }
+
     const body = await request.json();
     const parsed = createBidApiSchema.safeParse(body);
 
@@ -39,18 +50,18 @@ export const POST = async (request: NextRequest) => {
           },
         },
       });
-      const bidder = await tx.user.findUnique({ where: { id: input.bidderId } });
+      const bidder = await tx.user.findUnique({ where: { id: sessionUser.id } });
 
       if (!product || product.mode !== "AUCTION" || product.status !== "ACTIVE") {
         throw new Error("สินค้านี้ไม่พร้อมรับการประมูล");
       }
 
-      if (!bidder) {
-        throw new Error("ไม่พบสมาชิกผู้เสนอราคา");
+      if (!bidder || bidder.status !== "ACTIVE") {
+        throw new Error("บัญชีผู้เสนอราคายังไม่พร้อมใช้งาน");
       }
 
       if (input.amountCents < product.nextBidCents) {
-        throw new Error("ราคาที่เสนอจะต้องมากกว่าหรือเท่ากับราคาขั้นต่ำถัดไป");
+        throw new Error("ราคาที่เสนอต้องมากกว่าหรือเท่ากับราคาขั้นต่ำถัดไป");
       }
 
       if (bidder.bidLimitCents < input.amountCents) {

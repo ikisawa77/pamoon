@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -155,10 +155,10 @@ const compactCurrencyFormatter = new Intl.NumberFormat("th-TH", {
 const formatMoney = (value: number, compact = false) =>
   (compact ? compactCurrencyFormatter : currencyFormatter)
     .format(value)
-    .replace("THB", "฿");
+    .replace("THB", "เธฟ");
 
 const categoryLabels: Record<ProductCategory | "all", string> = {
-  all: "ทั้งหมด",
+  all: "เธ—เธฑเนเธเธซเธกเธ”",
   op01: "OP-01 ROMANCE DAWN",
   op02: "OP-02 PARAMOUNT WAR",
   op03: "OP-03 PILLARS OF STRENGTH",
@@ -184,6 +184,7 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
   const isGuest = viewer.role === "GUEST";
   const isShop = viewer.role === "SHOP";
   const isAdmin = viewer.role === "ADMIN";
+  const canListProducts = isShop || isAdmin;
   const [wallet, setWallet] = useState<WalletSummary>(initialData.wallet);
   const [products, setProducts] = useState<AuctionProduct[]>(initialData.products);
   const [activities, setActivities] = useState<ActivityItem[]>(initialData.activities);
@@ -196,7 +197,7 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
     maxPrice: "",
   });
   const [sortMode, setSortMode] = useState<SortMode>("ending");
-  const [notice, setNotice] = useState("ประมูลตัวอย่าง: การ์ดทุกใบหมดเวลาประมูลอีก 2 ปี วันที่ 28 เม.ย. 2028");
+  const [notice, setNotice] = useState("เธเธฃเธฐเธกเธนเธฅเธ•เธฑเธงเธญเธขเนเธฒเธ: เธเธฒเธฃเนเธ”เธ—เธธเธเนเธเธซเธกเธ”เน€เธงเธฅเธฒเธเธฃเธฐเธกเธนเธฅเธญเธตเธ 2 เธเธต เธงเธฑเธเธ—เธตเน 28 เน€เธก.เธข. 2028");
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
   const [listingOpen, setListingOpen] = useState(false);
@@ -240,14 +241,14 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
   const hotProducts = filteredProducts.filter((product) => product.hot || product.mode === "buy").slice(0, 20);
 
   const handleProductAction = async (product: AuctionProduct) => {
-    if (isGuest || isAdmin) {
-      setNotice(isAdmin ? "บัญชีผู้ดูแลใช้ดูแลระบบหลังบ้านเท่านั้น ไม่ใช้ซื้อหรือประมูลสินค้า" : "กรุณาสมัครสมาชิกหรือเข้าสู่ระบบก่อนซื้อและเสนอราคา");
+    if (isGuest) {
+      setNotice(isAdmin ? "เธเธฑเธเธเธตเธเธนเนเธ”เธนเนเธฅเนเธเนเธ”เธนเนเธฅเธฃเธฐเธเธเธซเธฅเธฑเธเธเนเธฒเธเน€เธ—เนเธฒเธเธฑเนเธ เนเธกเนเนเธเนเธเธทเนเธญเธซเธฃเธทเธญเธเธฃเธฐเธกเธนเธฅเธชเธดเธเธเนเธฒ" : "เธเธฃเธธเธ“เธฒเธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธเธซเธฃเธทเธญเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธเธเนเธญเธเธเธทเนเธญเนเธฅเธฐเน€เธชเธเธญเธฃเธฒเธเธฒ");
       return;
     }
 
     if (product.mode === "buy") {
       if (wallet.balance < product.currentPrice) {
-        setNotice(`ยอดเงินไม่พอสำหรับซื้อ ${product.title}`);
+        setNotice(`เธขเธญเธ”เน€เธเธดเธเนเธกเนเธเธญเธชเธณเธซเธฃเธฑเธเธเธทเนเธญ ${product.title}`);
         setTopUpOpen(true);
         return;
       }
@@ -267,7 +268,7 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
           const result = (await response.json()) as CreateOrderResponse;
 
           if (!response.ok || !result.ok || !result.user) {
-            setNotice(result.error?.message ?? "สั่งซื้อไม่สำเร็จ");
+            setNotice(result.error?.message ?? "เธชเธฑเนเธเธเธทเนเธญเนเธกเนเธชเธณเน€เธฃเนเธ");
             return;
           }
 
@@ -280,19 +281,19 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
           }));
           setProducts((current) => current.filter((item) => item.id !== product.id));
         } catch {
-          setNotice("เชื่อมต่อ API คำสั่งซื้อไม่ได้");
+          setNotice("เน€เธเธทเนเธญเธกเธ•เนเธญ API เธเธณเธชเธฑเนเธเธเธทเนเธญเนเธกเนเนเธ”เน");
           return;
         }
       } else {
         setWallet((current) => ({ ...current, balance: current.balance - product.currentPrice }));
       }
-      addActivity("ซื้อสินค้า", `${product.title} ${formatMoney(product.currentPrice, true)}`);
-      setNotice(`ซื้อสำเร็จ: ${product.title} จาก ${product.seller}`);
+      addActivity("เธเธทเนเธญเธชเธดเธเธเนเธฒ", `${product.title} ${formatMoney(product.currentPrice, true)}`);
+      setNotice(`เธเธทเนเธญเธชเธณเน€เธฃเนเธ: ${product.title} เธเธฒเธ ${product.seller}`);
       return;
     }
 
     if (wallet.balance + wallet.bidLimit < product.nextBid) {
-      setNotice(`ยอดเงินหรือวงเงินประมูลไม่พอสำหรับ ${product.title}`);
+      setNotice(`เธขเธญเธ”เน€เธเธดเธเธซเธฃเธทเธญเธงเธเน€เธเธดเธเธเธฃเธฐเธกเธนเธฅเนเธกเนเธเธญเธชเธณเธซเธฃเธฑเธ ${product.title}`);
       setTopUpOpen(true);
       return;
     }
@@ -313,7 +314,7 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
         const result = (await response.json()) as BidResponse;
 
         if (!response.ok || !result.ok || !result.product) {
-          setNotice(result.error?.message ?? "เสนอราคาไม่สำเร็จ");
+          setNotice(result.error?.message ?? "เน€เธชเธเธญเธฃเธฒเธเธฒเนเธกเนเธชเธณเน€เธฃเนเธ");
           return;
         }
 
@@ -326,13 +327,13 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
                   ...item,
                   currentPrice: Math.round(updatedProduct.currentPriceCents / 100),
                   nextBid: Math.round(updatedProduct.nextBidCents / 100),
-                  topBidder: "Demo Member",
+                  topBidder: viewer.displayName,
                 }
               : item,
           ),
         );
       } catch {
-        setNotice("เชื่อมต่อ API เสนอราคาไม่ได้");
+        setNotice("เน€เธเธทเนเธญเธกเธ•เนเธญ API เน€เธชเธเธญเธฃเธฒเธเธฒเนเธกเนเนเธ”เน");
         return;
       }
     } else {
@@ -351,19 +352,19 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
     }
 
     setWallet((current) => ({ ...current, bidLimit: Math.max(0, current.bidLimit - product.nextBid) }));
-    addActivity("เสนอราคา", `${product.title} ${formatMoney(product.nextBid, true)}`);
-    setNotice(`ใส่ราคาแล้ว: ${product.title} ราคาปัจจุบัน ${formatMoney(product.nextBid, true)}`);
+    addActivity("เน€เธชเธเธญเธฃเธฒเธเธฒ", `${product.title} ${formatMoney(product.nextBid, true)}`);
+    setNotice(`เนเธชเนเธฃเธฒเธเธฒเนเธฅเนเธง: ${product.title} เธฃเธฒเธเธฒเธเธฑเธเธเธธเธเธฑเธ ${formatMoney(product.nextBid, true)}`);
   };
 
   const handleTopUp = async () => {
-    if (isGuest || isAdmin) {
-      setNotice(isAdmin ? "บัญชีผู้ดูแลไม่ต้องเติมเงินในหน้าร้าน" : "กรุณาสมัครสมาชิกหรือเข้าสู่ระบบก่อนเติมเงิน");
+    if (isGuest) {
+      setNotice(isAdmin ? "เธเธฑเธเธเธตเธเธนเนเธ”เธนเนเธฅเนเธกเนเธ•เนเธญเธเน€เธ•เธดเธกเน€เธเธดเธเนเธเธซเธเนเธฒเธฃเนเธฒเธ" : "เธเธฃเธธเธ“เธฒเธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธเธซเธฃเธทเธญเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธเธเนเธญเธเน€เธ•เธดเธกเน€เธเธดเธ");
       return;
     }
 
     const parsed = topUpSchema.safeParse({ amount: topUpAmount });
     if (!parsed.success) {
-      setNotice("กรุณาระบุจำนวนเติมเงินตั้งแต่ ฿100 ถึง ฿50,000");
+      setNotice("เธเธฃเธธเธ“เธฒเธฃเธฐเธเธธเธเธณเธเธงเธเน€เธ•เธดเธกเน€เธเธดเธเธ•เธฑเนเธเนเธ•เน เธฟ100 เธ–เธถเธ เธฟ50,000");
       return;
     }
 
@@ -382,7 +383,7 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
         const result = (await response.json()) as TopUpResponse;
 
         if (!response.ok || !result.ok || !result.user) {
-          setNotice(result.error?.message ?? "เติมเงินไม่สำเร็จ");
+          setNotice(result.error?.message ?? "เน€เธ•เธดเธกเน€เธเธดเธเนเธกเนเธชเธณเน€เธฃเนเธ");
           return;
         }
 
@@ -394,21 +395,21 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
           bidLimit: Math.round(updatedUser.bidLimitCents / 100),
         }));
       } catch {
-        setNotice("เชื่อมต่อ API เติมเงินไม่ได้");
+        setNotice("เน€เธเธทเนเธญเธกเธ•เนเธญ API เน€เธ•เธดเธกเน€เธเธดเธเนเธกเนเนเธ”เน");
         return;
       }
     } else {
       setWallet((current) => ({ ...current, balance: current.balance + parsed.data.amount }));
     }
 
-    addActivity("เติมเงิน", `เพิ่มยอด ${formatMoney(parsed.data.amount, true)}`);
-    setNotice(`เติมเงินสำเร็จ: ยอดคงเหลือใหม่ ${formatMoney(wallet.balance + parsed.data.amount)}`);
+    addActivity("เน€เธ•เธดเธกเน€เธเธดเธ", `เน€เธเธดเนเธกเธขเธญเธ” ${formatMoney(parsed.data.amount, true)}`);
+    setNotice(`เน€เธ•เธดเธกเน€เธเธดเธเธชเธณเน€เธฃเนเธ: เธขเธญเธ”เธเธเน€เธซเธฅเธทเธญเนเธซเธกเน ${formatMoney(wallet.balance + parsed.data.amount)}`);
     setTopUpOpen(false);
   };
 
   const handleRegisterShop = () => {
     if (isGuest) {
-      setNotice("กรุณาสมัครสมาชิกก่อนส่งคำขอเปิดร้านค้า");
+      setNotice("เธเธฃเธธเธ“เธฒเธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธเธเนเธญเธเธชเนเธเธเธณเธเธญเน€เธเธดเธ”เธฃเนเธฒเธเธเนเธฒ");
       return;
     }
 
@@ -420,18 +421,18 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
     });
 
     if (!parsed.success) {
-      setNotice("ข้อมูลสมัครร้านค้ายังไม่ครบ");
+      setNotice("เธเนเธญเธกเธนเธฅเธชเธกเธฑเธเธฃเธฃเนเธฒเธเธเนเธฒเธขเธฑเธเนเธกเนเธเธฃเธ");
       return;
     }
 
-    addActivity("สมัครร้านค้า", "ส่งคำขอ CardHunter Shop แล้ว");
-    setNotice("สมัครร้านค้าแล้ว: ทีมงานจะตรวจสอบข้อมูลร้านของคุณ");
+    addActivity("เธชเธกเธฑเธเธฃเธฃเนเธฒเธเธเนเธฒ", "เธชเนเธเธเธณเธเธญ CardHunter Shop เนเธฅเนเธง");
+    setNotice("เธชเธกเธฑเธเธฃเธฃเนเธฒเธเธเนเธฒเนเธฅเนเธง: เธ—เธตเธกเธเธฒเธเธเธฐเธ•เธฃเธงเธเธชเธญเธเธเนเธญเธกเธนเธฅเธฃเนเธฒเธเธเธญเธเธเธธเธ“");
     setShopOpen(false);
   };
 
   const handleCreateListing = async (formData: FormData) => {
-    if (!isShop) {
-      setNotice(isGuest ? "กรุณาสมัครสมาชิกและสมัครร้านค้าก่อนลงสินค้า" : "บัญชีนี้ยังไม่ใช่ร้านค้า กรุณาสมัครร้านค้าก่อนลงสินค้า");
+    if (!canListProducts) {
+      setNotice(isGuest ? "เธเธฃเธธเธ“เธฒเธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธเนเธฅเธฐเธชเธกเธฑเธเธฃเธฃเนเธฒเธเธเนเธฒเธเนเธญเธเธฅเธเธชเธดเธเธเนเธฒ" : "เธเธฑเธเธเธตเธเธตเนเธขเธฑเธเนเธกเนเนเธเนเธฃเนเธฒเธเธเนเธฒ เธเธฃเธธเธ“เธฒเธชเธกเธฑเธเธฃเธฃเนเธฒเธเธเนเธฒเธเนเธญเธเธฅเธเธชเธดเธเธเนเธฒ");
       return;
     }
 
@@ -449,7 +450,7 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
     });
 
     if (!parsed.success) {
-      setNotice("กรุณาตรวจสอบข้อมูลสินค้าก่อนลงขาย");
+      setNotice("เธเธฃเธธเธ“เธฒเธ•เธฃเธงเธเธชเธญเธเธเนเธญเธกเธนเธฅเธชเธดเธเธเนเธฒเธเนเธญเธเธฅเธเธเธฒเธข");
       return;
     }
 
@@ -472,13 +473,13 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
         const result = (await response.json()) as CreateProductResponse;
 
         if (!response.ok || !result.ok || !result.product) {
-          setNotice(result.error?.message ?? "ลงสินค้าไม่สำเร็จ");
+          setNotice(result.error?.message ?? "เธฅเธเธชเธดเธเธเนเธฒเนเธกเนเธชเธณเน€เธฃเนเธ");
           return;
         }
 
         createdProductId = result.product.id;
       } catch {
-        setNotice("เชื่อมต่อ API ลงสินค้าไม่ได้");
+        setNotice("เน€เธเธทเนเธญเธกเธ•เนเธญ API เธฅเธเธชเธดเธเธเนเธฒเนเธกเนเนเธ”เน");
         return;
       }
     }
@@ -487,9 +488,9 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
       id: createdProductId,
       title: listing.title,
       code: `${listing.series} ${listing.code}`,
-      seller: "CardHunter Shop",
-      shopId: "cardhunter",
-      topBidder: "รอผู้เสนอราคา",
+      seller: isAdmin ? "Admin Dev Shop" : "CardHunter Shop",
+      shopId: isAdmin ? "admin-dev-shop" : "cardhunter",
+      topBidder: "เธฃเธญเธเธนเนเน€เธชเธเธญเธฃเธฒเธเธฒ",
       mode: listing.mode,
       category: listing.category,
       rarity: listing.rarity,
@@ -497,14 +498,14 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
       currentPrice: price,
       nextBid: price + 250,
       watchers: 0,
-      endsIn: listing.mode === "auction" ? "เหลือ 2 ปี (หมด 28 เม.ย. 2028)" : "พร้อมส่ง",
+      endsIn: listing.mode === "auction" ? "เน€เธซเธฅเธทเธญ 2 เธเธต (เธซเธกเธ” 28 เน€เธก.เธข. 2028)" : "เธเธฃเนเธญเธกเธชเนเธ",
       imagePositionClass: "object-pos-1",
       hot: false,
     };
 
     setProducts((current) => [newProduct, ...current]);
-    addActivity("ลงสินค้า", `${listing.title} (${listing.mode === "auction" ? "ประมูล" : "ซื้อเลย"})`);
-    setNotice(`ลงสินค้าแล้ว: ${listing.title} พร้อมแสดงในตลาด`);
+    addActivity("เธฅเธเธชเธดเธเธเนเธฒ", `${listing.title} (${listing.mode === "auction" ? "เธเธฃเธฐเธกเธนเธฅ" : "เธเธทเนเธญเน€เธฅเธข"})`);
+    setNotice(`เธฅเธเธชเธดเธเธเนเธฒเนเธฅเนเธง: ${listing.title} เธเธฃเนเธญเธกเนเธชเธ”เธเนเธเธ•เธฅเธฒเธ”`);
     setListingOpen(false);
   };
 
@@ -536,11 +537,11 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
 
           <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary">
             <span className="font-semibold">{notice}</span>
-            <span className="ml-2 text-muted-foreground">ตัวอย่าง: 3 ร้านค้า / ลงขาย {buyTotal} ใบ / ลงประมูล {auctionTotal} ใบ / ครบ {rarityOptions.length} rarity</span>
+            <span className="ml-2 text-muted-foreground">เธ•เธฑเธงเธญเธขเนเธฒเธ: 3 เธฃเนเธฒเธเธเนเธฒ / เธฅเธเธเธฒเธข {buyTotal} เนเธ / เธฅเธเธเธฃเธฐเธกเธนเธฅ {auctionTotal} เนเธ / เธเธฃเธ {rarityOptions.length} rarity</span>
           </div>
 
           <section className="flex flex-col gap-4">
-            <SectionHeading title="ประมูลใกล้จบ" count={endingProducts.length + 20} />
+            <SectionHeading title="เธเธฃเธฐเธกเธนเธฅเนเธเธฅเนเธเธ" count={endingProducts.length + 20} />
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-4">
               {endingProducts.map((product) => (
                 <AuctionCard key={product.id} product={product} size="feature" onAction={handleProductAction} />
@@ -549,7 +550,7 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
           </section>
 
           <section className="flex flex-col gap-4">
-            <SectionHeading title="ประมูลกำลังมาแรง" hot />
+            <SectionHeading title="เธเธฃเธฐเธกเธนเธฅเธเธณเธฅเธฑเธเธกเธฒเนเธฃเธ" hot />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
               {hotProducts.map((product) => (
                 <AuctionCard key={product.id} product={product} size="compact" onAction={handleProductAction} />
@@ -601,11 +602,11 @@ const SiteHeader = ({ viewer, wallet, onOpenTopUp, onOpenListing }: SiteHeaderPr
   const isShop = viewer.role === "SHOP";
   const isAdmin = viewer.role === "ADMIN";
   const navItems = [
-    { label: "ประมูล", icon: Trophy, href: "/auctions" },
-    { label: "ซื้อเลย", icon: CreditCard, href: "/buy-now" },
-    { label: "ตลาดร้านค้า", icon: Store, href: "/shops" },
-    { label: "คอลเลกชัน", icon: BookOpen, href: "/collection" },
-    { label: "ช่วยเหลือ", icon: CircleHelp, href: "/help" },
+    { label: "เธเธฃเธฐเธกเธนเธฅ", icon: Trophy, href: "/auctions" },
+    { label: "เธเธทเนเธญเน€เธฅเธข", icon: CreditCard, href: "/buy-now" },
+    { label: "เธ•เธฅเธฒเธ”เธฃเนเธฒเธเธเนเธฒ", icon: Store, href: "/shops" },
+    { label: "เธเธญเธฅเน€เธฅเธเธเธฑเธ", icon: BookOpen, href: "/collection" },
+    { label: "เธเนเธงเธขเน€เธซเธฅเธทเธญ", icon: CircleHelp, href: "/help" },
   ];
   const profileInitials = viewer.displayName.slice(0, 2).toUpperCase();
 
@@ -614,7 +615,7 @@ const SiteHeader = ({ viewer, wallet, onOpenTopUp, onOpenListing }: SiteHeaderPr
       <div className="grid gap-3 px-4 py-3 md:grid-cols-[auto_1fr_auto] md:items-center">
       <Link href="/" className="flex items-center gap-2">
         <div className="flex size-10 rotate-[-8deg] items-center justify-center rounded-md bg-primary text-primary-foreground shadow-lg shadow-primary/20">
-          ★
+          โ…
         </div>
         <div className="text-2xl font-bold tracking-tight">
           <span>BidCard</span> <span className="text-primary">TH</span>
@@ -645,7 +646,7 @@ const SiteHeader = ({ viewer, wallet, onOpenTopUp, onOpenListing }: SiteHeaderPr
       </nav>
 
       <div className="flex items-center gap-2 overflow-x-auto md:justify-end">
-        {!isGuest && !isAdmin ? (
+        {!isGuest ? (
           <Button asChild variant="outline" className="shrink-0">
           <Link href="/wallet">
           <Wallet data-icon="inline-start" />
@@ -656,10 +657,10 @@ const SiteHeader = ({ viewer, wallet, onOpenTopUp, onOpenListing }: SiteHeaderPr
         {isGuest ? (
           <>
             <Button asChild variant="outline" className="shrink-0">
-              <Link href="/login">เข้าสู่ระบบ</Link>
+              <Link href="/login">เน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธ</Link>
             </Button>
             <Button asChild className="shrink-0">
-              <Link href="/register">สมัครสมาชิก</Link>
+              <Link href="/register">เธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธ</Link>
             </Button>
           </>
         ) : null}
@@ -667,26 +668,26 @@ const SiteHeader = ({ viewer, wallet, onOpenTopUp, onOpenListing }: SiteHeaderPr
           <Button asChild variant="outline" className="hidden shrink-0 sm:inline-flex">
             <Link href="/seller/register">
               <Building2 data-icon="inline-start" />
-              สมัครร้านค้า
+              เธชเธกเธฑเธเธฃเธฃเนเธฒเธเธเนเธฒ
             </Link>
           </Button>
         ) : null}
-        {isShop ? (
+        {isShop || isAdmin ? (
           <Button type="button" className="hidden shrink-0 sm:inline-flex" onClick={onOpenListing}>
             <Plus data-icon="inline-start" />
-            ลงสินค้า
+            เธฅเธเธชเธดเธเธเนเธฒ
           </Button>
         ) : null}
         {isAdmin ? (
           <Button asChild className="shrink-0">
-            <Link href="/admin">หลังบ้าน Admin</Link>
+            <Link href="/admin">เธซเธฅเธฑเธเธเนเธฒเธ Admin</Link>
           </Button>
         ) : null}
         <Button type="button" className="shrink-0 bg-wallet text-wallet-foreground hover:bg-wallet/90" onClick={onOpenTopUp}>
-          เติมเงิน
+          เน€เธ•เธดเธกเน€เธเธดเธ
         </Button>
         <NotificationBell className="relative shrink-0" />
-        <Button asChild variant="ghost" size="icon" className="shrink-0" aria-label="ตะกร้า">
+        <Button asChild variant="ghost" size="icon" className="shrink-0" aria-label="เธ•เธฐเธเธฃเนเธฒ">
           <Link href="/cart">
           <ShoppingCart />
           </Link>
@@ -700,26 +701,26 @@ const SiteHeader = ({ viewer, wallet, onOpenTopUp, onOpenListing }: SiteHeaderPr
           <span className="text-left leading-tight">
             <span className="block font-semibold">{viewer.displayName}</span>
             <span className="block text-xs text-muted-foreground">
-              {isShop ? "ร้านค้า" : isAdmin ? "ผู้ดูแลระบบ" : "สมาชิก"}
+              {isShop ? "ร้านค้า" : isAdmin ? "ผู้ดูแลทดสอบระบบ" : "สมาชิก"}
             </span>
           </span>
           <ChevronDown data-icon="inline-end" />
           </Link>
         </Button>
         ) : null}
-        {isShop ? (
+        {isShop || isAdmin ? (
           <Button type="button" className="xl:hidden" onClick={onOpenListing}>
           <Plus data-icon="inline-start" />
-          ลงสินค้า
+          เธฅเธเธชเธดเธเธเนเธฒ
         </Button>
         ) : null}
       </div>
       </div>
       <div className="border-t bg-muted/50 px-4 py-2 text-sm text-muted-foreground">
-        {isGuest ? "ยังไม่ได้สมัครสมาชิก: ดูรายการได้ทั้งหมด แต่ต้องเข้าสู่ระบบก่อนซื้อ ประมูล เติมเงิน หรือสมัครร้านค้า" : null}
-        {isMember ? "โหมดสมาชิก: ซื้อสินค้า เสนอราคา เติมเงิน และสมัครร้านค้าได้จากเมนูด้านบน" : null}
-        {isShop ? "โหมดร้านค้า: ลงสินค้า เปิดประมูล และติดตามยอดขายจากเมนูร้านค้าได้" : null}
-        {isAdmin ? "โหมดผู้ดูแล: บัญชีนี้ใช้สำหรับหลังบ้านเท่านั้น การซื้อขายหน้าร้านถูกปิดไว้" : null}
+        {isGuest ? "เธขเธฑเธเนเธกเนเนเธ”เนเธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธ: เธ”เธนเธฃเธฒเธขเธเธฒเธฃเนเธ”เนเธ—เธฑเนเธเธซเธกเธ” เนเธ•เนเธ•เนเธญเธเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธเธเนเธญเธเธเธทเนเธญ เธเธฃเธฐเธกเธนเธฅ เน€เธ•เธดเธกเน€เธเธดเธ เธซเธฃเธทเธญเธชเธกเธฑเธเธฃเธฃเนเธฒเธเธเนเธฒ" : null}
+        {isMember ? "เนเธซเธกเธ”เธชเธกเธฒเธเธดเธ: เธเธทเนเธญเธชเธดเธเธเนเธฒ เน€เธชเธเธญเธฃเธฒเธเธฒ เน€เธ•เธดเธกเน€เธเธดเธ เนเธฅเธฐเธชเธกเธฑเธเธฃเธฃเนเธฒเธเธเนเธฒเนเธ”เนเธเธฒเธเน€เธกเธเธนเธ”เนเธฒเธเธเธ" : null}
+        {isShop ? "เนเธซเธกเธ”เธฃเนเธฒเธเธเนเธฒ: เธฅเธเธชเธดเธเธเนเธฒ เน€เธเธดเธ”เธเธฃเธฐเธกเธนเธฅ เนเธฅเธฐเธ•เธดเธ”เธ•เธฒเธกเธขเธญเธ”เธเธฒเธขเธเธฒเธเน€เธกเธเธนเธฃเนเธฒเธเธเนเธฒเนเธ”เน" : null}
+        {isAdmin ? "โหมดผู้ดูแลสำหรับทดสอบระบบ: ซื้อ ประมูล เติมเงิน ลงสินค้า และเปิดหลังบ้านได้ในบัญชีเดียว" : null}
       </div>
     </header>
   );
@@ -734,14 +735,14 @@ const RoleNotice = ({ viewer }: RoleNoticeProps) => {
     return (
       <div className="grid gap-3 rounded-lg border bg-card p-4 shadow-sm sm:grid-cols-[1fr_auto_auto] sm:items-center">
         <div>
-          <strong className="block">เริ่มใช้งาน BidCard TH</strong>
-          <span className="text-sm text-muted-foreground">สมัครสมาชิกเพื่อซื้อ เติมเงิน และเสนอราคา หรือสมัครร้านค้าเพื่อเริ่มลงขายการ์ด</span>
+          <strong className="block">เน€เธฃเธดเนเธกเนเธเนเธเธฒเธ BidCard TH</strong>
+          <span className="text-sm text-muted-foreground">เธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธเน€เธเธทเนเธญเธเธทเนเธญ เน€เธ•เธดเธกเน€เธเธดเธ เนเธฅเธฐเน€เธชเธเธญเธฃเธฒเธเธฒ เธซเธฃเธทเธญเธชเธกเธฑเธเธฃเธฃเนเธฒเธเธเนเธฒเน€เธเธทเนเธญเน€เธฃเธดเนเธกเธฅเธเธเธฒเธขเธเธฒเธฃเนเธ”</span>
         </div>
         <Button asChild variant="outline">
-          <Link href="/login">เข้าสู่ระบบ</Link>
+          <Link href="/login">เน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธ</Link>
         </Button>
         <Button asChild>
-          <Link href="/register">สมัครสมาชิก</Link>
+          <Link href="/register">เธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธ</Link>
         </Button>
       </div>
     );
@@ -750,9 +751,9 @@ const RoleNotice = ({ viewer }: RoleNoticeProps) => {
   if (viewer.role === "MEMBER") {
     return (
       <div className="flex flex-col gap-3 rounded-lg border border-wallet/20 bg-wallet/5 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
-        <span><strong>สมาชิกทั่วไป:</strong> พร้อมซื้อและประมูลแล้ว หากต้องการลงขายให้สมัครร้านค้าก่อน</span>
+        <span><strong>เธชเธกเธฒเธเธดเธเธ—เธฑเนเธงเนเธ:</strong> เธเธฃเนเธญเธกเธเธทเนเธญเนเธฅเธฐเธเธฃเธฐเธกเธนเธฅเนเธฅเนเธง เธซเธฒเธเธ•เนเธญเธเธเธฒเธฃเธฅเธเธเธฒเธขเนเธซเนเธชเธกเธฑเธเธฃเธฃเนเธฒเธเธเนเธฒเธเนเธญเธ</span>
         <Button asChild variant="outline">
-          <Link href="/seller/register">สมัครร้านค้า</Link>
+          <Link href="/seller/register">เธชเธกเธฑเธเธฃเธฃเนเธฒเธเธเนเธฒ</Link>
         </Button>
       </div>
     );
@@ -761,9 +762,9 @@ const RoleNotice = ({ viewer }: RoleNoticeProps) => {
   if (viewer.role === "SHOP") {
     return (
       <div className="flex flex-col gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
-        <span><strong>ร้านค้า:</strong> ลงสินค้า เปิดประมูล และจัดการรายการขายได้จากปุ่มลงสินค้า</span>
+        <span><strong>เธฃเนเธฒเธเธเนเธฒ:</strong> เธฅเธเธชเธดเธเธเนเธฒ เน€เธเธดเธ”เธเธฃเธฐเธกเธนเธฅ เนเธฅเธฐเธเธฑเธ”เธเธฒเธฃเธฃเธฒเธขเธเธฒเธฃเธเธฒเธขเนเธ”เนเธเธฒเธเธเธธเนเธกเธฅเธเธชเธดเธเธเนเธฒ</span>
         <Button asChild>
-          <Link href="/shops">ดูตลาดร้านค้า</Link>
+          <Link href="/shops">เธ”เธนเธ•เธฅเธฒเธ”เธฃเนเธฒเธเธเนเธฒ</Link>
         </Button>
       </div>
     );
@@ -771,9 +772,9 @@ const RoleNotice = ({ viewer }: RoleNoticeProps) => {
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border bg-card p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
-      <span><strong>Admin:</strong> ใช้บัญชีนี้ดูแลระบบหลังบ้านเท่านั้น</span>
+      <span><strong>Admin:</strong> โหมดผู้ดูแลสำหรับทดสอบระบบ ใช้ซื้อ ประมูล เติมเงิน และลงสินค้าในร้าน Admin Dev Shop ได้</span>
       <Button asChild>
-        <Link href="/admin">เปิดหลังบ้าน</Link>
+        <Link href="/admin">เน€เธเธดเธ”เธซเธฅเธฑเธเธเนเธฒเธ</Link>
       </Button>
     </div>
   );
@@ -788,22 +789,22 @@ interface FilterSidebarProps {
 const FilterSidebar = ({ filters, onChange, onClear }: FilterSidebarProps) => (
   <aside className="rounded-lg border bg-card p-4 shadow-sm lg:sticky lg:top-24 lg:h-[calc(100vh-7rem)] lg:overflow-auto">
     <div className="mb-5 flex items-center justify-between">
-      <h2 className="text-lg font-semibold">ตัวกรอง</h2>
+      <h2 className="text-lg font-semibold">เธ•เธฑเธงเธเธฃเธญเธ</h2>
       <Button type="button" variant="link" className="h-auto p-0 text-primary" onClick={onClear}>
-        ล้างทั้งหมด
+        เธฅเนเธฒเธเธ—เธฑเนเธเธซเธกเธ”
       </Button>
     </div>
 
-    <FilterBlock title="ประเภทสินค้า">
+    <FilterBlock title="เธเธฃเธฐเน€เธ เธ—เธชเธดเธเธเนเธฒ">
       <RadioGroup
         value={filters.saleType}
         onValueChange={(value) => onChange({ ...filters, saleType: value as ListingMode | "all" })}
         className="flex flex-col gap-3"
       >
         {[
-          ["all", "ทั้งหมด"],
-          ["auction", "ประมูล"],
-          ["buy", "ซื้อเลย"],
+          ["all", "เธ—เธฑเนเธเธซเธกเธ”"],
+          ["auction", "เธเธฃเธฐเธกเธนเธฅ"],
+          ["buy", "เธเธทเนเธญเน€เธฅเธข"],
         ].map(([value, label]) => (
           <label key={value} className="flex items-center gap-2 text-sm">
             <RadioGroupItem value={value} />
@@ -828,14 +829,14 @@ const FilterSidebar = ({ filters, onChange, onClear }: FilterSidebarProps) => (
         ))}
       </RadioGroup>
       <Button type="button" variant="link" className="h-auto justify-start p-0 text-muted-foreground">
-        เพิ่มเติม <ChevronDown data-icon="inline-end" />
+        เน€เธเธดเนเธกเน€เธ•เธดเธก <ChevronDown data-icon="inline-end" />
       </Button>
     </FilterBlock>
 
     <FilterBlock title="NAME / CARD ID">
       <div className="relative">
         <Search className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="ค้นหาซีรีส์" className="pr-10" />
+        <Input placeholder="เธเนเธเธซเธฒเธเธตเธฃเธตเธชเน" className="pr-10" />
       </div>
       {["OP-01 ROMANCE DAWN", "OP-02 PARAMOUNT WAR", "OP-03 PILLARS OF STRENGTH", "OP-05 AWAKENING"].map((label, index) => (
         <label key={label} className="flex items-center gap-2 text-sm">
@@ -846,7 +847,7 @@ const FilterSidebar = ({ filters, onChange, onClear }: FilterSidebarProps) => (
       ))}
     </FilterBlock>
 
-    <FilterBlock title="ระดับความหายาก">
+    <FilterBlock title="เธฃเธฐเธ”เธฑเธเธเธงเธฒเธกเธซเธฒเธขเธฒเธ">
       <RadioGroup
         value={filters.rarity}
         onValueChange={(value) => onChange({ ...filters, rarity: value as ProductRarity | "all" })}
@@ -854,7 +855,7 @@ const FilterSidebar = ({ filters, onChange, onClear }: FilterSidebarProps) => (
       >
         <label className="flex items-center gap-2 text-sm">
           <RadioGroupItem value="all" />
-          ทั้งหมด
+          เธ—เธฑเนเธเธซเธกเธ”
         </label>
         {rarityOptions.map((rarity) => (
           <label key={rarity} className="flex items-center gap-2 text-sm">
@@ -866,19 +867,19 @@ const FilterSidebar = ({ filters, onChange, onClear }: FilterSidebarProps) => (
       </RadioGroup>
     </FilterBlock>
 
-    <FilterBlock title="ช่วงราคา (฿)">
+    <FilterBlock title="เธเนเธงเธเธฃเธฒเธเธฒ (เธฟ)">
       <div className="grid grid-cols-2 gap-2">
         <Input
           type="number"
           min={0}
-          placeholder="ขั้นต่ำ"
+          placeholder="เธเธฑเนเธเธ•เนเธณ"
           value={filters.minPrice}
           onChange={(event) => onChange({ ...filters, minPrice: event.target.value })}
         />
         <Input
           type="number"
           min={0}
-          placeholder="สูงสุด"
+          placeholder="เธชเธนเธเธชเธธเธ”"
           value={filters.maxPrice}
           onChange={(event) => onChange({ ...filters, maxPrice: event.target.value })}
         />
@@ -914,7 +915,7 @@ const MarketToolbar = ({ query, sortMode, onQueryChange, onSortChange }: MarketT
     <div className="relative md:w-[430px]">
       <Input
         value={query}
-        placeholder="ค้นหาการ์ด/ซีรีส์/ชื่อการ์ด..."
+        placeholder="เธเนเธเธซเธฒเธเธฒเธฃเนเธ”/เธเธตเธฃเธตเธชเน/เธเธทเนเธญเธเธฒเธฃเนเธ”..."
         className="h-11 bg-card pr-10"
         onChange={(event) => onQueryChange(event.target.value)}
       />
@@ -923,25 +924,25 @@ const MarketToolbar = ({ query, sortMode, onQueryChange, onSortChange }: MarketT
     <div className="flex items-center gap-2 overflow-x-auto">
       <Select value={sortMode} onValueChange={(value) => onSortChange(value as SortMode)}>
         <SelectTrigger className="h-11 w-[170px] bg-card">
-          <SelectValue placeholder="เรียง" />
+          <SelectValue placeholder="เน€เธฃเธตเธขเธ" />
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
-            <SelectItem value="ending">เรียง: ใกล้จบก่อน</SelectItem>
-            <SelectItem value="priceHigh">ราคาสูงก่อน</SelectItem>
-            <SelectItem value="priceLow">ราคาต่ำก่อน</SelectItem>
+            <SelectItem value="ending">เน€เธฃเธตเธขเธ: เนเธเธฅเนเธเธเธเนเธญเธ</SelectItem>
+            <SelectItem value="priceHigh">เธฃเธฒเธเธฒเธชเธนเธเธเนเธญเธ</SelectItem>
+            <SelectItem value="priceLow">เธฃเธฒเธเธฒเธ•เนเธณเธเนเธญเธ</SelectItem>
           </SelectGroup>
         </SelectContent>
       </Select>
-      <Button type="button" variant="secondary" size="icon" aria-label="มุมมองกริด">
+      <Button type="button" variant="secondary" size="icon" aria-label="เธกเธธเธกเธกเธญเธเธเธฃเธดเธ”">
         <Grid2X2 />
       </Button>
-      <Button type="button" variant="outline" size="icon" aria-label="มุมมองรายการ">
+      <Button type="button" variant="outline" size="icon" aria-label="เธกเธธเธกเธกเธญเธเธฃเธฒเธขเธเธฒเธฃ">
         <LayoutList />
       </Button>
       <Button type="button" variant="outline">
         <Filter data-icon="inline-start" />
-        ตัวกรอง
+        เธ•เธฑเธงเธเธฃเธญเธ
         <Badge variant="destructive">2</Badge>
       </Button>
     </div>
@@ -978,13 +979,13 @@ const AuctionCard = ({ product, size, onAction }: AuctionCardProps) => (
       />
       <div className="absolute left-3 top-3 flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs font-semibold text-primary-foreground">
         <Clock3 data-icon="inline-start" />
-        {product.mode === "auction" ? product.endsIn : "ซื้อเลย พร้อมส่ง"}
+        {product.mode === "auction" ? product.endsIn : "เธเธทเนเธญเน€เธฅเธข เธเธฃเนเธญเธกเธชเนเธ"}
       </div>
-      <Button type="button" variant="secondary" size="icon-sm" className="absolute right-3 top-3 rounded-full bg-card/90" aria-label="ติดตาม">
+      <Button type="button" variant="secondary" size="icon-sm" className="absolute right-3 top-3 rounded-full bg-card/90" aria-label="เธ•เธดเธ”เธ•เธฒเธก">
         <Heart />
       </Button>
       <div className="absolute bottom-3 left-3 flex items-center gap-2">
-        {(product.rarity === "SEC" || product.rarity === "SP" || product.rarity === "P") && <Badge className="bg-bid text-bid-foreground">จุดนิยม</Badge>}
+        {(product.rarity === "SEC" || product.rarity === "SP" || product.rarity === "P") && <Badge className="bg-bid text-bid-foreground">เธเธธเธ”เธเธดเธขเธก</Badge>}
         <Badge variant="secondary" className="bg-foreground/80 text-background">
           <Eye data-icon="inline-start" />
           {product.watchers}
@@ -1003,9 +1004,9 @@ const AuctionCard = ({ product, size, onAction }: AuctionCardProps) => (
     <CardContent className={cn("grid gap-2", size === "compact" ? "px-3 pb-3" : "px-4 pb-4")}>
       {size === "feature" ? (
         <div className="grid grid-cols-2 gap-3 border-t pt-3 text-sm">
-          <PriceMetric label="ราคาเปิด" value={formatMoney(product.openingPrice, true)} />
-          <PriceMetric label="ราคาปัจจุบัน" value={formatMoney(product.currentPrice, true)} strong />
-          <PriceMetric label={product.mode === "auction" ? "ผู้เสนอสูงสุด" : "ร้านค้า"} value={product.mode === "auction" ? product.topBidder : product.seller} />
+          <PriceMetric label="เธฃเธฒเธเธฒเน€เธเธดเธ”" value={formatMoney(product.openingPrice, true)} />
+          <PriceMetric label="เธฃเธฒเธเธฒเธเธฑเธเธเธธเธเธฑเธ" value={formatMoney(product.currentPrice, true)} strong />
+          <PriceMetric label={product.mode === "auction" ? "เธเธนเนเน€เธชเธเธญเธชเธนเธเธชเธธเธ”" : "เธฃเนเธฒเธเธเนเธฒ"} value={product.mode === "auction" ? product.topBidder : product.seller} />
         </div>
       ) : (
         <div className="flex items-end justify-between gap-2">
@@ -1017,7 +1018,7 @@ const AuctionCard = ({ product, size, onAction }: AuctionCardProps) => (
     {size === "feature" && (
       <CardFooter className="px-4 pb-4">
         <Button type="button" className="w-full bg-bid text-white hover:bg-bid/90" onClick={() => onAction(product)}>
-          {product.mode === "auction" ? "เสนอราคา" : "ซื้อเลย"}
+          {product.mode === "auction" ? "เน€เธชเธเธญเธฃเธฒเธเธฒ" : "เธเธทเนเธญเน€เธฅเธข"}
         </Button>
       </CardFooter>
     )}
@@ -1046,140 +1047,136 @@ interface RightPanelProps {
   onOpenListing: () => void;
 }
 
-const RightPanel = ({ viewer, wallet, activities, onOpenTopUp, onOpenShop, onOpenListing }: RightPanelProps) => (
-  <aside className="flex flex-col gap-4 lg:grid lg:grid-cols-2 xl:sticky xl:top-24 xl:flex xl:h-[calc(100vh-7rem)] xl:overflow-auto">
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {viewer.role === "GUEST" ? "ยังไม่สมัครสมาชิก" : viewer.role === "SHOP" ? "เมนูร้านค้า" : viewer.role === "ADMIN" ? "ผู้ดูแลระบบ" : "เมนูสมาชิก"}
-        </CardTitle>
-        <CardDescription>
-          {viewer.role === "GUEST"
-            ? "สมัครสมาชิกเพื่อซื้อ ประมูล เติมเงิน และสมัครเปิดร้าน"
-            : viewer.role === "SHOP"
-              ? "จัดการการลงสินค้าและเปิดประมูลจากบัญชีร้านค้า"
+const RightPanel = ({ viewer, wallet, activities, onOpenTopUp, onOpenShop, onOpenListing }: RightPanelProps) => {
+  const canListProducts = viewer.role === "SHOP" || viewer.role === "ADMIN";
+
+  return (
+    <aside className="flex flex-col gap-4 lg:grid lg:grid-cols-2 xl:sticky xl:top-24 xl:flex xl:h-[calc(100vh-7rem)] xl:overflow-auto">
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {viewer.role === "GUEST" ? "ยังไม่สมัครสมาชิก" : viewer.role === "SHOP" ? "เมนูร้านค้า" : viewer.role === "ADMIN" ? "Admin Test Mode" : "เมนูสมาชิก"}
+          </CardTitle>
+          <CardDescription>
+            {viewer.role === "GUEST"
+              ? "สมัครสมาชิกเพื่อซื้อ ประมูล เติมเงิน และสมัครเปิดร้าน"
               : viewer.role === "ADMIN"
-                ? "บัญชี admin ใช้เข้าหลังบ้านเท่านั้น"
-                : "ซื้อสินค้า เสนอราคา เติมเงิน และสมัครร้านค้าได้"}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid grid-cols-2 gap-2">
-        {viewer.role === "GUEST" ? (
-          <>
-            <Button asChild variant="outline">
-              <Link href="/login">เข้าสู่ระบบ</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/register">สมัครสมาชิก</Link>
-            </Button>
-          </>
-        ) : viewer.role === "SHOP" ? (
-          <>
-            <Button type="button" onClick={onOpenListing}>ลงสินค้า</Button>
-            <Button asChild variant="outline">
-              <Link href="/shops">ดูหน้าร้าน</Link>
-            </Button>
-          </>
-        ) : viewer.role === "ADMIN" ? (
-          <Button asChild className="col-span-2">
-            <Link href="/admin">เปิดหลังบ้าน</Link>
-          </Button>
-        ) : (
-          <>
-            <Button type="button" onClick={onOpenTopUp}>เติมเงิน</Button>
-            <Button asChild variant="outline">
-              <Link href="/seller/register">สมัครร้านค้า</Link>
-            </Button>
-          </>
-        )}
-      </CardContent>
-    </Card>
-    <Card className="wallet-visual wallet-card-shadow overflow-hidden border-0 text-wallet-foreground">
-      <CardHeader className="relative z-10">
-        <div className="flex items-center justify-between">
-          <CardTitle>กระเป๋าเงิน</CardTitle>
-          <Menu />
-        </div>
-        <CardDescription className="text-wallet-foreground/75">ยอดเงินคงเหลือ</CardDescription>
-      </CardHeader>
-      <CardContent className="relative z-10 grid gap-5">
-        <div className="text-3xl font-bold">{formatMoney(wallet.balance)}</div>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <span>รอการชำระเงิน <strong className="block">{formatMoney(wallet.pendingPayment)}</strong></span>
-          <span>วงเงินประมูล <strong className="block">{formatMoney(wallet.bidLimit)}</strong></span>
-        </div>
-      </CardContent>
-    </Card>
+                ? "โหมดผู้ดูแลสำหรับทดสอบตลาดและหลังบ้านในบัญชีเดียว"
+                : viewer.role === "SHOP"
+                  ? "ลงสินค้า เปิดประมูล และติดตามยอดขาย"
+                  : "ซื้อสินค้า เสนอราคา เติมเงิน และสมัครร้านค้าได้"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-2">
+          {viewer.role === "GUEST" ? (
+            <>
+              <Button asChild variant="outline">
+                <Link href="/login">เข้าสู่ระบบ</Link>
+              </Button>
+              <Button asChild>
+                <Link href="/register">สมัครสมาชิก</Link>
+              </Button>
+            </>
+          ) : canListProducts ? (
+            <>
+              <Button type="button" onClick={onOpenListing}>ลงสินค้า</Button>
+              <Button asChild variant="outline">
+                <Link href={viewer.role === "ADMIN" ? "/admin" : "/shops"}>
+                  {viewer.role === "ADMIN" ? "เปิดหลังบ้าน" : "ดูหน้าร้าน"}
+                </Link>
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button type="button" onClick={onOpenTopUp}>เติมเงิน</Button>
+              <Button asChild variant="outline">
+                <Link href="/seller/register">สมัครร้านค้า</Link>
+              </Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
+      <Card className="wallet-visual wallet-card-shadow overflow-hidden border-0 text-wallet-foreground">
+        <CardHeader className="relative z-10">
+          <div className="flex items-center justify-between">
+            <CardTitle>กระเป๋าเงิน</CardTitle>
+            <Menu />
+          </div>
+          <CardDescription className="text-wallet-foreground/75">ยอดเงินคงเหลือ</CardDescription>
+        </CardHeader>
+        <CardContent className="relative z-10 grid gap-5">
+          <div className="text-3xl font-bold">{formatMoney(wallet.balance)}</div>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <span>รอการชำระเงิน <strong className="block">{formatMoney(wallet.pendingPayment)}</strong></span>
+            <span>วงเงินประมูล <strong className="block">{formatMoney(wallet.bidLimit)}</strong></span>
+          </div>
+        </CardContent>
+      </Card>
 
-    <div className="grid grid-cols-2 gap-3">
-      <Button type="button" className="bg-wallet text-wallet-foreground hover:bg-wallet/90" onClick={onOpenTopUp}>
-        <Wallet data-icon="inline-start" />
-        เติมเงิน
-      </Button>
-      <Button asChild variant="outline">
-        <Link href="/wallet">
-        <History data-icon="inline-start" />
-        ประวัติการเงิน
-        </Link>
-      </Button>
-    </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Button type="button" className="bg-wallet text-wallet-foreground hover:bg-wallet/90" onClick={onOpenTopUp}>
+          <Wallet data-icon="inline-start" />
+          เติมเงิน
+        </Button>
+        <Button asChild variant="outline">
+          <Link href="/wallet">
+            <History data-icon="inline-start" />
+            ประวัติการเงิน
+          </Link>
+        </Button>
+      </div>
 
-    <Card>
-      <CardHeader>
-        <CardTitle>ตัวอย่างร้านค้า 3 ร้าน</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
-        {[
-          ["CH", "CardHunter Shop", "ลงขาย 27 ใบ / ประมูล 27 ใบ"],
-          ["GL", "Grand Line Cards", "ลงขาย 27 ใบ / ประมูล 27 ใบ"],
-          ["RD", "Romance Dawn Vault", "ลงขาย 26 ใบ / ประมูล 26 ใบ"],
-        ].map(([initials, name, detail]) => (
-          <div key={name} className="flex items-center gap-3">
-            <Avatar className="size-10">
-              <AvatarFallback>{initials}</AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 flex-1">
-              <strong className="block truncate">{name}</strong>
-              <span className="text-sm text-muted-foreground">{detail}</span>
+      <Card>
+        <CardHeader>
+          <CardTitle>ร้านค้าทดสอบ</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          {[
+            ["AD", "Admin Dev Shop", "ร้านทดสอบสำหรับผู้ดูแลระบบ"],
+            ["CH", "CardHunter Shop", "ลงขาย 27 ใบ / ประมูล 27 ใบ"],
+            ["GL", "Grand Line Cards", "ลงขาย 27 ใบ / ประมูล 27 ใบ"],
+            ["RD", "Romance Dawn Vault", "ลงขาย 26 ใบ / ประมูล 26 ใบ"],
+          ].map(([initials, name, detail]) => (
+            <div key={name} className="flex items-center gap-3">
+              <Avatar className="size-10">
+                <AvatarFallback>{initials}</AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <strong className="block truncate">{name}</strong>
+                <span className="text-sm text-muted-foreground">{detail}</span>
+              </div>
             </div>
-          </div>
-        ))}
-        <div className="pt-1">
-          <Button asChild variant="outline" size="sm" className="w-full">
-            <Link href="/shops">
-            ไปยังร้านค้า
-            </Link>
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+          ))}
+        </CardContent>
+      </Card>
 
-    <div className="grid grid-cols-2 gap-3">
-      <Button type="button" variant="outline" className="text-wallet" onClick={onOpenShop}>
-        <Building2 data-icon="inline-start" />
-        สมัครร้านค้า
-      </Button>
-      <Button type="button" onClick={onOpenListing}>
-        <Plus data-icon="inline-start" />
-        ลงสินค้า
-      </Button>
-    </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Button type="button" variant="outline" className="text-wallet" onClick={onOpenShop}>
+          <Building2 data-icon="inline-start" />
+          สมัครร้านค้า
+        </Button>
+        <Button type="button" onClick={onOpenListing}>
+          <Plus data-icon="inline-start" />
+          ลงสินค้า
+        </Button>
+      </div>
 
-    <Card className="lg:col-span-2 xl:col-span-1">
-      <CardHeader>
-        <CardTitle>รายการล่าสุด</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
-        {activities.slice(0, 5).map((activity) => (
-          <div key={activity.id} className="border-b pb-3 last:border-b-0 last:pb-0">
-            <strong className="block text-sm">{activity.title}</strong>
-            <span className="text-sm text-muted-foreground">{activity.detail}</span>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
-  </aside>
-);
+      <Card className="lg:col-span-2 xl:col-span-1">
+        <CardHeader>
+          <CardTitle>รายการล่าสุด</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          {activities.slice(0, 5).map((activity) => (
+            <div key={activity.id} className="border-b pb-3 last:border-b-0 last:pb-0">
+              <strong className="block text-sm">{activity.title}</strong>
+              <span className="text-sm text-muted-foreground">{activity.detail}</span>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </aside>
+  );
+};
 
 interface TopUpDialogProps {
   open: boolean;
@@ -1193,8 +1190,8 @@ const TopUpDialog = ({ open, amount, onAmountChange, onOpenChange, onSubmit }: T
   <Dialog open={open} onOpenChange={onOpenChange}>
     <DialogContent>
       <DialogHeader>
-        <DialogTitle>เติมเงิน</DialogTitle>
-        <DialogDescription>เลือกจำนวนเงินหรือกรอกเอง ระบบตัวอย่างจะอัปเดตยอดทันที</DialogDescription>
+        <DialogTitle>เน€เธ•เธดเธกเน€เธเธดเธ</DialogTitle>
+        <DialogDescription>เน€เธฅเธทเธญเธเธเธณเธเธงเธเน€เธเธดเธเธซเธฃเธทเธญเธเธฃเธญเธเน€เธญเธ เธฃเธฐเธเธเธ•เธฑเธงเธญเธขเนเธฒเธเธเธฐเธญเธฑเธเน€เธ”เธ•เธขเธญเธ”เธ—เธฑเธเธ—เธต</DialogDescription>
       </DialogHeader>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {[500, 1000, 2000, 5000].map((value) => (
@@ -1206,7 +1203,7 @@ const TopUpDialog = ({ open, amount, onAmountChange, onOpenChange, onSubmit }: T
       <Input type="number" min={100} step={100} value={amount} onChange={(event) => onAmountChange(event.target.value)} />
       <DialogFooter>
         <Button type="button" className="bg-wallet text-wallet-foreground hover:bg-wallet/90" onClick={onSubmit}>
-          ยืนยันเติมเงิน
+          เธขเธทเธเธขเธฑเธเน€เธ•เธดเธกเน€เธเธดเธ
         </Button>
       </DialogFooter>
     </DialogContent>
@@ -1223,20 +1220,20 @@ const ShopRegistrationDialog = ({ open, onOpenChange, onSubmit }: ShopRegistrati
   <Dialog open={open} onOpenChange={onOpenChange}>
     <DialogContent>
       <DialogHeader>
-        <DialogTitle>สมัครร้านค้า</DialogTitle>
-        <DialogDescription>เปิดร้านขายการ์ดและรับเงินผ่านระบบกระเป๋าเงิน</DialogDescription>
+        <DialogTitle>เธชเธกเธฑเธเธฃเธฃเนเธฒเธเธเนเธฒ</DialogTitle>
+        <DialogDescription>เน€เธเธดเธ”เธฃเนเธฒเธเธเธฒเธขเธเธฒเธฃเนเธ”เนเธฅเธฐเธฃเธฑเธเน€เธเธดเธเธเนเธฒเธเธฃเธฐเธเธเธเธฃเธฐเน€เธเนเธฒเน€เธเธดเธ</DialogDescription>
       </DialogHeader>
       <div className="flex flex-col gap-3">
-        <Input defaultValue="CardHunter Shop" aria-label="ชื่อร้าน" />
-        <Input defaultValue="@cardhunter" aria-label="ช่องทางติดต่อ" />
-        <Input placeholder="ธนาคาร / PromptPay" aria-label="บัญชีรับเงิน" />
+        <Input defaultValue="CardHunter Shop" aria-label="เธเธทเนเธญเธฃเนเธฒเธ" />
+        <Input defaultValue="@cardhunter" aria-label="เธเนเธญเธเธ—เธฒเธเธ•เธดเธ”เธ•เนเธญ" />
+        <Input placeholder="เธเธเธฒเธเธฒเธฃ / PromptPay" aria-label="เธเธฑเธเธเธตเธฃเธฑเธเน€เธเธดเธ" />
         <label className="flex items-start gap-2 text-sm text-muted-foreground">
           <Checkbox defaultChecked />
-          ยอมรับเงื่อนไขร้านค้าและค่าธรรมเนียมแพลตฟอร์ม
+          เธขเธญเธกเธฃเธฑเธเน€เธเธทเนเธญเธเนเธเธฃเนเธฒเธเธเนเธฒเนเธฅเธฐเธเนเธฒเธเธฃเธฃเธกเน€เธเธตเธขเธกเนเธเธฅเธ•เธเธญเธฃเนเธก
         </label>
       </div>
       <DialogFooter>
-        <Button type="button" onClick={onSubmit}>ส่งคำขอสมัครร้านค้า</Button>
+        <Button type="button" onClick={onSubmit}>เธชเนเธเธเธณเธเธญเธชเธกเธฑเธเธฃเธฃเนเธฒเธเธเนเธฒ</Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>
@@ -1254,12 +1251,12 @@ const ListingSheet = ({ open, mode, onModeChange, onOpenChange, onSubmit }: List
   <Sheet open={open} onOpenChange={onOpenChange}>
     <SheetContent className="w-full overflow-auto p-0 sm:max-w-[560px] lg:max-w-[680px]">
       <SheetHeader className="border-b px-5 py-4">
-        <SheetTitle>ลงสินค้า</SheetTitle>
-        <SheetDescription>สร้างรายการขายหรือประมูลแบบ 3 ขั้นตอน</SheetDescription>
+        <SheetTitle>เธฅเธเธชเธดเธเธเนเธฒ</SheetTitle>
+        <SheetDescription>เธชเธฃเนเธฒเธเธฃเธฒเธขเธเธฒเธฃเธเธฒเธขเธซเธฃเธทเธญเธเธฃเธฐเธกเธนเธฅเนเธเธ 3 เธเธฑเนเธเธ•เธญเธ</SheetDescription>
       </SheetHeader>
       <form action={onSubmit} className="flex flex-col gap-5 p-5">
         <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
-          {["ข้อมูลสินค้า", "รายละเอียด", "ตรวจสอบ"].map((label, index) => (
+          {["เธเนเธญเธกเธนเธฅเธชเธดเธเธเนเธฒ", "เธฃเธฒเธขเธฅเธฐเน€เธญเธตเธขเธ”", "เธ•เธฃเธงเธเธชเธญเธ"].map((label, index) => (
             <div key={label} className={cn("flex items-center gap-2", index === 0 && "text-primary")}>
               <span className={cn("flex size-6 items-center justify-center rounded-full bg-muted", index === 0 && "bg-primary text-primary-foreground")}>{index + 1}</span>
               <strong>{label}</strong>
@@ -1270,13 +1267,13 @@ const ListingSheet = ({ open, mode, onModeChange, onOpenChange, onSubmit }: List
         <div className="grid gap-5 lg:grid-cols-[1fr_220px]">
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-2 gap-3">
-              <ModeButton active={mode === "auction"} title="ประมูล" detail="ผู้สนใจเสนอราคา" onClick={() => onModeChange("auction")} />
-              <ModeButton active={mode === "buy"} title="ซื้อเลย" detail="ราคาคงที่ทันที" onClick={() => onModeChange("buy")} />
+              <ModeButton active={mode === "auction"} title="เธเธฃเธฐเธกเธนเธฅ" detail="เธเธนเนเธชเธเนเธเน€เธชเธเธญเธฃเธฒเธเธฒ" onClick={() => onModeChange("auction")} />
+              <ModeButton active={mode === "buy"} title="เธเธทเนเธญเน€เธฅเธข" detail="เธฃเธฒเธเธฒเธเธเธ—เธตเนเธ—เธฑเธเธ—เธต" onClick={() => onModeChange("buy")} />
             </div>
 
             <Select name="category" defaultValue="op01">
               <SelectTrigger>
-                <SelectValue placeholder="เลือก SET" />
+                <SelectValue placeholder="เน€เธฅเธทเธญเธ SET" />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
@@ -1289,13 +1286,13 @@ const ListingSheet = ({ open, mode, onModeChange, onOpenChange, onSubmit }: List
               </SelectContent>
             </Select>
 
-            <Input name="title" defaultValue="Monkey D. Luffy (SEC)" placeholder="ชื่อการ์ด" />
+            <Input name="title" defaultValue="Monkey D. Luffy (SEC)" placeholder="เธเธทเนเธญเธเธฒเธฃเนเธ”" />
             <div className="grid gap-3 sm:grid-cols-3">
-              <Input name="series" defaultValue="OP01" placeholder="ซีรีส์" />
-              <Input name="code" defaultValue="119" placeholder="รหัสการ์ด" />
+              <Input name="series" defaultValue="OP01" placeholder="เธเธตเธฃเธตเธชเน" />
+              <Input name="code" defaultValue="119" placeholder="เธฃเธซเธฑเธชเธเธฒเธฃเนเธ”" />
               <Select name="rarity" defaultValue="SEC">
                 <SelectTrigger>
-                  <SelectValue placeholder="ระดับความหายาก" />
+                  <SelectValue placeholder="เธฃเธฐเธ”เธฑเธเธเธงเธฒเธกเธซเธฒเธขเธฒเธ" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
@@ -1307,22 +1304,22 @@ const ListingSheet = ({ open, mode, onModeChange, onOpenChange, onSubmit }: List
               </Select>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
-              <Input name="openingPrice" type="number" min={100} defaultValue={1000} placeholder="ราคาเริ่ม" />
-              <Input name="buyNowPrice" type="number" min={0} defaultValue={12750} placeholder="ราคาซื้อเลย" />
-              <Select name="duration" defaultValue="3 วัน">
+              <Input name="openingPrice" type="number" min={100} defaultValue={1000} placeholder="เธฃเธฒเธเธฒเน€เธฃเธดเนเธก" />
+              <Input name="buyNowPrice" type="number" min={0} defaultValue={12750} placeholder="เธฃเธฒเธเธฒเธเธทเนเธญเน€เธฅเธข" />
+              <Select name="duration" defaultValue="3 เธงเธฑเธ">
                 <SelectTrigger>
-                  <SelectValue placeholder="ระยะเวลา" />
+                  <SelectValue placeholder="เธฃเธฐเธขเธฐเน€เธงเธฅเธฒ" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectItem value="30 นาที">30 นาที</SelectItem>
-                    <SelectItem value="3 วัน">3 วัน</SelectItem>
-                    <SelectItem value="7 วัน">7 วัน</SelectItem>
+                    <SelectItem value="30 เธเธฒเธ—เธต">30 เธเธฒเธ—เธต</SelectItem>
+                    <SelectItem value="3 เธงเธฑเธ">3 เธงเธฑเธ</SelectItem>
+                    <SelectItem value="7 เธงเธฑเธ">7 เธงเธฑเธ</SelectItem>
                   </SelectGroup>
                 </SelectContent>
               </Select>
             </div>
-            <Input name="condition" defaultValue="Near Mint" placeholder="สภาพการ์ด" />
+            <Input name="condition" defaultValue="Near Mint" placeholder="เธชเธ เธฒเธเธเธฒเธฃเนเธ”" />
             <div className="flex flex-wrap gap-2">
               {["Mint (M)", "Near Mint (NM)", "Excellent (EX)", "Good (G)", "Played (P)"].map((condition) => (
                 <Badge key={condition} variant={condition === "Near Mint (NM)" ? "default" : "outline"}>{condition}</Badge>
@@ -1333,8 +1330,8 @@ const ListingSheet = ({ open, mode, onModeChange, onOpenChange, onSubmit }: List
           <div className="flex flex-col gap-3">
             <div className="flex min-h-40 flex-col items-center justify-center gap-2 rounded-lg border border-dashed bg-muted/40 p-4 text-center text-sm text-muted-foreground">
               <ImageUp />
-              <strong className="text-foreground">คลิกหรือวางไฟล์ที่นี่</strong>
-              <span>รองรับ JPG, PNG สูงสุด 10MB</span>
+              <strong className="text-foreground">เธเธฅเธดเธเธซเธฃเธทเธญเธงเธฒเธเนเธเธฅเนเธ—เธตเนเธเธตเน</strong>
+              <span>เธฃเธญเธเธฃเธฑเธ JPG, PNG เธชเธนเธเธชเธธเธ” 10MB</span>
             </div>
             <div className="grid grid-cols-4 gap-2">
               {["object-pos-1", "object-pos-2", "object-pos-3"].map((position) => (
@@ -1342,21 +1339,21 @@ const ListingSheet = ({ open, mode, onModeChange, onOpenChange, onSubmit }: List
                   key={position}
                   className={cn("product-art aspect-square overflow-hidden rounded-md bg-muted", position)}
                   role="img"
-                  aria-label="ตัวอย่างรูปการ์ด"
+                  aria-label="เธ•เธฑเธงเธญเธขเนเธฒเธเธฃเธนเธเธเธฒเธฃเนเธ”"
                 />
               ))}
               <div className="flex aspect-square items-center justify-center rounded-md bg-foreground text-background">+2</div>
             </div>
-            <Input placeholder="วางลิงก์ YouTube" aria-label="วิดีโอสินค้า" />
+            <Input placeholder="เธงเธฒเธเธฅเธดเธเธเน YouTube" aria-label="เธงเธดเธ”เธตเนเธญเธชเธดเธเธเนเธฒ" />
           </div>
         </div>
 
         <Separator />
         <SheetFooter className="p-0 sm:flex-row sm:justify-end">
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
-            ยกเลิก
+            เธขเธเน€เธฅเธดเธ
           </Button>
-          <Button type="submit">ถัดไป</Button>
+          <Button type="submit">เธ–เธฑเธ”เนเธ</Button>
         </SheetFooter>
       </form>
     </SheetContent>
@@ -1383,3 +1380,4 @@ const ModeButton = ({ active, title, detail, onClick }: ModeButtonProps) => (
 );
 
 export { AuctionMarketplace };
+
