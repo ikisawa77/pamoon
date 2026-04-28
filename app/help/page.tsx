@@ -54,7 +54,7 @@ const HelpPage = () => (
             <Link href="/buy-now">ไปหน้าซื้อเลย</Link>
           </Button>
           <Button asChild>
-            <Link href="/admin">เปิดหลังบ้าน</Link>
+            <Link href="/account">ไปบัญชีของฉัน</Link>
           </Button>
         </CardContent>
       </Card>

@@ -11,6 +11,7 @@ import {
   MapPin,
   MessageCircle,
   PackageCheck,
+  Settings,
   Store,
   User,
 } from "lucide-react";
@@ -29,8 +30,13 @@ const accountMenuItems = [
   { label: "สมัครร้านค้า", href: "/account/seller", icon: Store },
 ];
 
-const AccountNav = () => {
+interface AccountNavProps {
+  isAdmin: boolean;
+}
+
+const AccountNav = ({ isAdmin }: AccountNavProps) => {
   const pathname = usePathname();
+  const adminActive = pathname === "/admin";
 
   return (
     <aside className="flex flex-col gap-3">
@@ -61,6 +67,24 @@ const AccountNav = () => {
           })}
         </nav>
       </div>
+      {isAdmin ? (
+        <div className="rounded-lg border bg-card p-3 shadow-sm">
+          <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
+            <Settings />
+            จัดการระบบหลังบ้าน
+          </div>
+          <Button
+            asChild
+            variant={adminActive ? "secondary" : "ghost"}
+            className={cn("w-full justify-start", adminActive && "text-primary")}
+          >
+            <Link href="/admin">
+              <Settings data-icon="inline-start" />
+              แดชบอร์ด Admin
+            </Link>
+          </Button>
+        </div>
+      ) : null}
       <div className="rounded-lg border bg-card p-3 shadow-sm">
         <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
           <ClipboardList />
