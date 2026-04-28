@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Bell,
   BookOpen,
@@ -78,6 +80,7 @@ import type {
 
 interface AuctionMarketplaceProps {
   initialData: MarketplaceSnapshot;
+  initialSaleType?: ListingMode | "all";
 }
 
 type SortMode = "ending" | "priceHigh" | "priceLow";
@@ -164,12 +167,12 @@ const rarityLabels: Record<ProductRarity, string> = {
   P: "Promo / Parallel (P)",
 };
 
-const AuctionMarketplace = ({ initialData }: AuctionMarketplaceProps) => {
+const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMarketplaceProps) => {
   const [wallet, setWallet] = useState<WalletSummary>(initialData.wallet);
   const [products, setProducts] = useState<AuctionProduct[]>(initialData.products);
   const [activities, setActivities] = useState<ActivityItem[]>(initialData.activities);
   const [filters, setFilters] = useState<FiltersState>({
-    saleType: "all",
+    saleType: initialSaleType,
     category: "all",
     rarity: "all",
     query: "",
@@ -445,7 +448,6 @@ const AuctionMarketplace = ({ initialData }: AuctionMarketplaceProps) => {
       <SiteHeader
         wallet={wallet}
         onOpenTopUp={() => setTopUpOpen(true)}
-        onOpenShop={() => setShopOpen(true)}
         onOpenListing={() => setListingOpen(true)}
       />
 
@@ -515,63 +517,76 @@ const AuctionMarketplace = ({ initialData }: AuctionMarketplaceProps) => {
 interface SiteHeaderProps {
   wallet: WalletSummary;
   onOpenTopUp: () => void;
-  onOpenShop: () => void;
   onOpenListing: () => void;
 }
 
-const SiteHeader = ({ wallet, onOpenTopUp, onOpenShop, onOpenListing }: SiteHeaderProps) => {
+const SiteHeader = ({ wallet, onOpenTopUp, onOpenListing }: SiteHeaderProps) => {
+  const pathname = usePathname();
   const navItems = [
-    { label: "ประมูล", icon: Trophy, active: true },
-    { label: "ซื้อเลย", icon: CreditCard, active: false },
-    { label: "ตลาดร้านค้า", icon: Store, active: false },
-    { label: "คอลเลกชัน", icon: BookOpen, active: false },
-    { label: "ช่วยเหลือ", icon: CircleHelp, active: false },
+    { label: "ประมูล", icon: Trophy, href: "/auctions" },
+    { label: "ซื้อเลย", icon: CreditCard, href: "/buy-now" },
+    { label: "ตลาดร้านค้า", icon: Store, href: "/shops" },
+    { label: "คอลเลกชัน", icon: BookOpen, href: "/collection" },
+    { label: "ช่วยเหลือ", icon: CircleHelp, href: "/help" },
   ];
 
   return (
     <header className="sticky top-0 z-40 grid gap-3 border-b bg-card/95 px-4 py-3 shadow-sm backdrop-blur md:grid-cols-[auto_1fr_auto] md:items-center">
-      <div className="flex items-center gap-2">
+      <Link href="/" className="flex items-center gap-2">
         <div className="flex size-10 rotate-[-8deg] items-center justify-center rounded-md bg-primary text-primary-foreground shadow-lg shadow-primary/20">
           ★
         </div>
         <div className="text-2xl font-bold tracking-tight">
           <span>BidCard</span> <span className="text-primary">TH</span>
         </div>
-      </div>
+      </Link>
 
       <nav className="flex gap-2 overflow-x-auto md:justify-center">
-        {navItems.map((item) => (
+        {navItems.map((item) => {
+          const active = pathname === item.href || (pathname === "/" && item.href === "/auctions");
+
+          return (
           <Button
             key={item.label}
-            type="button"
-            variant={item.active ? "ghost" : "ghost"}
+            asChild
+            variant="ghost"
             className={cn(
               "shrink-0 text-muted-foreground",
-              item.active && "text-primary",
+              active && "text-primary",
             )}
           >
+            <Link href={item.href}>
             <item.icon data-icon="inline-start" />
             {item.label}
+            </Link>
           </Button>
-        ))}
+          );
+        })}
       </nav>
 
       <div className="flex items-center gap-2 overflow-x-auto md:justify-end">
-        <Button type="button" variant="outline" className="shrink-0">
+        <Button asChild variant="outline" className="shrink-0">
+          <Link href="/wallet">
           <Wallet data-icon="inline-start" />
           {formatMoney(wallet.balance)}
+          </Link>
         </Button>
         <Button type="button" className="shrink-0 bg-wallet text-wallet-foreground hover:bg-wallet/90" onClick={onOpenTopUp}>
           เติมเงิน
         </Button>
-        <Button type="button" variant="ghost" size="icon" className="relative shrink-0" aria-label="แจ้งเตือน">
+        <Button asChild variant="ghost" size="icon" className="relative shrink-0" aria-label="แจ้งเตือน">
+          <Link href="/notifications">
           <Bell />
           <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">3</span>
+          </Link>
         </Button>
-        <Button type="button" variant="ghost" size="icon" className="shrink-0" aria-label="ตะกร้า">
+        <Button asChild variant="ghost" size="icon" className="shrink-0" aria-label="ตะกร้า">
+          <Link href="/cart">
           <ShoppingCart />
+          </Link>
         </Button>
-        <Button type="button" variant="ghost" className="hidden gap-2 xl:flex" onClick={onOpenShop}>
+        <Button asChild variant="ghost" className="hidden gap-2 xl:flex">
+          <Link href="/account">
           <Avatar className="size-9">
             <AvatarFallback>CH</AvatarFallback>
           </Avatar>
@@ -580,6 +595,7 @@ const SiteHeader = ({ wallet, onOpenTopUp, onOpenShop, onOpenListing }: SiteHead
             <span className="block text-xs text-muted-foreground">นักสะสม Lv.12</span>
           </span>
           <ChevronDown data-icon="inline-end" />
+          </Link>
         </Button>
         <Button type="button" className="xl:hidden" onClick={onOpenListing}>
           <Plus data-icon="inline-start" />
@@ -880,9 +896,11 @@ const RightPanel = ({ wallet, activities, onOpenTopUp, onOpenShop, onOpenListing
         <Wallet data-icon="inline-start" />
         เติมเงิน
       </Button>
-      <Button type="button" variant="outline">
+      <Button asChild variant="outline">
+        <Link href="/wallet">
         <History data-icon="inline-start" />
         ประวัติการเงิน
+        </Link>
       </Button>
     </div>
 
@@ -907,8 +925,10 @@ const RightPanel = ({ wallet, activities, onOpenTopUp, onOpenShop, onOpenListing
           </div>
         ))}
         <div className="pt-1">
-          <Button type="button" variant="outline" size="sm" className="w-full" onClick={onOpenShop}>
+          <Button asChild variant="outline" size="sm" className="w-full">
+            <Link href="/shops">
             ไปยังร้านค้า
+            </Link>
           </Button>
         </div>
       </CardContent>
