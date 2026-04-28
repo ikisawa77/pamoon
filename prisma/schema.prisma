@@ -133,6 +133,13 @@ enum ModerationCaseStatus {
   RESOLVED
 }
 
+enum HomeContentType {
+  SLIDE
+  PROMOTION
+  ARTICLE
+  FEATURED_SHOP
+}
+
 model User {
   id                 String              @id @default(cuid())
   email              String              @unique @db.VarChar(191)
@@ -371,4 +378,21 @@ model ModerationCase {
   @@index([userId])
   @@index([shopId])
   @@index([orderId])
+}
+
+model HomeContent {
+  id          String          @id @default(cuid())
+  type        HomeContentType
+  title       String          @db.VarChar(160)
+  subtitle    String?         @db.VarChar(255)
+  body        String?         @db.Text
+  href        String?         @db.VarChar(255)
+  imageUrl    String?         @db.VarChar(255)
+  badge       String?         @db.VarChar(80)
+  sortOrder   Int             @default(0)
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([type, isActive, sortOrder])
 }

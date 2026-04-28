@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AdminHomeContentManager } from "@/components/shared/AdminHomeContentManager";
 import { LogoutButton } from "@/components/shared/LogoutButton";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { prisma } from "@/lib/db/prisma";
@@ -47,6 +48,7 @@ const AdminPage = async () => {
     latestTransactions,
     moderationCases,
     refundPendingOrders,
+    homeContents,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.shop.count(),
@@ -112,6 +114,9 @@ const AdminPage = async () => {
         product: { select: { title: true } },
       },
     }),
+    prisma.homeContent.findMany({
+      orderBy: [{ type: "asc" }, { sortOrder: "asc" }],
+    }),
   ]);
 
   const statCards = [
@@ -148,6 +153,21 @@ const AdminPage = async () => {
             </Card>
           ))}
         </div>
+
+        <AdminHomeContentManager
+          contents={homeContents.map((content) => ({
+            id: content.id,
+            type: content.type,
+            title: content.title,
+            subtitle: content.subtitle,
+            body: content.body,
+            href: content.href,
+            imageUrl: content.imageUrl,
+            badge: content.badge,
+            sortOrder: content.sortOrder,
+            isActive: content.isActive,
+          }))}
+        />
 
         <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
           <Card>

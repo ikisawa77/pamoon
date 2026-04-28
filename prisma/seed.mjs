@@ -129,7 +129,7 @@ const main = async () => {
 
   await connection.beginTransaction();
   try {
-    for (const table of ["ChatMessage", "ChatThread", "ModerationCase", "Notification", "Order", "Bid", "WalletTransaction", "Product", "Shop", "User"]) {
+    for (const table of ["ChatMessage", "ChatThread", "ModerationCase", "Notification", "Order", "Bid", "WalletTransaction", "HomeContent", "Product", "Shop", "User"]) {
       await connection.query(`DELETE FROM \`${table}\``);
     }
 
@@ -280,6 +280,106 @@ const main = async () => {
       readAt: null,
       createdAt: now,
     });
+
+    const homeContents = [
+      {
+        id: id("home_slide", 1),
+        type: "SLIDE",
+        title: "BidCard TH Mega Week",
+        subtitle: "ประมูลการ์ดหายากพร้อมคูปองค่าธรรมเนียมสำหรับร้านค้าใหม่",
+        body: "รวมดีลเด่น การ์ดหายาก และร้านค้าที่ผ่านการตรวจสอบ",
+        href: "/auctions",
+        imageUrl: "/assets/trading-card-products.png",
+        badge: "Live",
+        sortOrder: 1,
+      },
+      {
+        id: id("home_slide", 2),
+        type: "SLIDE",
+        title: "Seller Launch Pack",
+        subtitle: "เปิดร้าน ลงขาย และเปิดประมูลได้จากแผงเดียว",
+        body: "เหมาะสำหรับร้านการ์ดที่ต้องการทดสอบระบบหลังบ้านครบชุด",
+        href: "/seller/register",
+        imageUrl: "/assets/trading-card-products.png",
+        badge: "ร้านค้า",
+        sortOrder: 2,
+      },
+      {
+        id: id("home_promo", 1),
+        type: "PROMOTION",
+        title: "เติมเงินรับวงเงินประมูลเพิ่ม",
+        subtitle: "สำหรับสมาชิกทดสอบระบบ",
+        body: "เติมเงินแล้วใช้เสนอราคาในรายการประมูลได้ทันที",
+        href: "/wallet",
+        imageUrl: "/assets/trading-card-products.png",
+        badge: "Wallet",
+        sortOrder: 1,
+      },
+      {
+        id: id("home_promo", 2),
+        type: "PROMOTION",
+        title: "ร้านใหม่ลงสินค้าได้ทันที",
+        subtitle: "รองรับขายทันทีและประมูล",
+        body: "ใช้แบบฟอร์มเดียวสร้างรายการขายและเชื่อมแจ้งเตือนร้านค้า",
+        href: "/seller/register",
+        imageUrl: "/assets/trading-card-products.png",
+        badge: "Seller",
+        sortOrder: 2,
+      },
+      {
+        id: id("home_article", 1),
+        type: "ARTICLE",
+        title: "วิธีตั้งราคาประมูลให้จบสวย",
+        subtitle: "ตั้งราคาเปิดและ next bid ให้เหมาะกับ rarity",
+        body: "แนวทางสำหรับร้านค้าที่ต้องการเปิดประมูลการ์ดแบบมีสภาพคล่อง",
+        href: "/help",
+        imageUrl: "/assets/trading-card-products.png",
+        badge: "Guide",
+        sortOrder: 1,
+      },
+      {
+        id: id("home_article", 2),
+        type: "ARTICLE",
+        title: "เช็ก SLA ก่อนซื้อขาย",
+        subtitle: "ชำระ 24 ชม. ส่ง 48 ชม. คืนเงินตามระบบ",
+        body: "สรุป workflow สำคัญสำหรับผู้ซื้อ ผู้ชนะประมูล และร้านค้า",
+        href: "/help",
+        imageUrl: "/assets/trading-card-products.png",
+        badge: "SLA",
+        sortOrder: 2,
+      },
+      {
+        id: id("home_shop", 1),
+        type: "FEATURED_SHOP",
+        title: "CardHunter Shop",
+        subtitle: "ร้านแนะนำสำหรับการ์ดหายาก",
+        body: "คะแนนร้าน 4.9 พร้อมรายการประมูลและซื้อทันที",
+        href: "/shops/cardhunter",
+        imageUrl: "/assets/trading-card-products.png",
+        badge: "แนะนำ",
+        sortOrder: 1,
+      },
+      {
+        id: id("home_shop", 2),
+        type: "FEATURED_SHOP",
+        title: "Admin Dev Shop",
+        subtitle: "ร้านทดสอบสำหรับผู้ดูแลระบบ",
+        body: "ใช้สำหรับทดสอบลงสินค้า ซื้อ ประมูล และแจ้งเตือน",
+        href: "/shops/admin-dev-shop",
+        imageUrl: "/assets/trading-card-products.png",
+        badge: "Dev",
+        sortOrder: 2,
+      },
+    ];
+
+    for (const content of homeContents) {
+      await insert(connection, "HomeContent", {
+        ...content,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
 
     const paidOrderId = id("order", 2);
     const paidProduct = products[80];

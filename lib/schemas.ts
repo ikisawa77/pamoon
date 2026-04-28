@@ -58,6 +58,20 @@ export const chatMessageSchema = z.object({
   body: z.string().trim().min(1).max(1000),
 });
 
+const optionalText = (maxLength: number) =>
+  z.preprocess((value) => (typeof value === "string" && value.trim() === "" ? undefined : value), z.string().trim().max(maxLength).optional());
+
+export const homeContentUpdateSchema = z.object({
+  title: z.string().trim().min(2).max(160),
+  subtitle: optionalText(255),
+  body: optionalText(2000),
+  href: optionalText(255),
+  imageUrl: optionalText(255),
+  badge: optionalText(80),
+  sortOrder: z.coerce.number().int().min(0).max(999),
+  isActive: z.boolean(),
+});
+
 export const notificationQuerySchema = z.object({
   status: z.enum(["all", "unread"]).optional(),
   category: z.enum(["all", "orders", "auctions", "chat", "system", "action"]).optional(),
@@ -78,5 +92,6 @@ export type TopUpApiInput = z.infer<typeof topUpApiSchema>;
 export type CreateOrderApiInput = z.infer<typeof createOrderApiSchema>;
 export type OrderActionInput = z.infer<typeof orderActionSchema>;
 export type ChatMessageInput = z.infer<typeof chatMessageSchema>;
+export type HomeContentUpdateInput = z.infer<typeof homeContentUpdateSchema>;
 export type NotificationQueryInput = z.infer<typeof notificationQuerySchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
