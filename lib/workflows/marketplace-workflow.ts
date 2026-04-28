@@ -349,6 +349,94 @@ export const runMarketplaceSlaProcessor = async (now = new Date()) => {
   };
 
   await prisma.$transaction(async (tx) => {
+    const endingSoonFavoriteProducts = await tx.product.findMany({
+      where: {
+        mode: "AUCTION",
+        status: "ACTIVE",
+        auctionEndsAt: {
+          gt: now,
+          lte: addMs(now, AUCTION_ENDING_SOON_MS),
+        },
+      },
+      include: {
+        favorites: {
+          where: {
+            emailNotify: true,
+            notifyEndingSoon: true,
+            endingSoonNotifiedAt: null,
+            disabledAfterAuctionAt: null,
+          },
+          include: {
+            user: { select: { id: true, email: true } },
+          },
+        },
+        bids: {
+          where: {
+            status: { in: ["WINNING", "OUTBID"] },
+            endingSoonNotifiedAt: null,
+          },
+          include: {
+            bidder: { select: { id: true, email: true } },
+          },
+        },
+      },
+      take: 50,
+    });
+
+    for (const product of endingSoonFavoriteProducts) {
+      const favoriteRecipients = product.favorites.map((favorite) => favorite.user);
+      const bidRecipients = product.bids.map((bid) => bid.bidder);
+      const recipientMap = new Map([...favoriteRecipients, ...bidRecipients].map((recipient) => [recipient.id, recipient]));
+      const recipients = Array.from(recipientMap.values());
+
+      if (recipients.length === 0) {
+        continue;
+      }
+
+      await tx.notification.createMany({
+        data: recipients.map((recipient) => ({
+          recipientId: recipient.id,
+          type: "SYSTEM" as const,
+          title: "ประมูลเหลือ 5 นาทีสุดท้าย",
+          message: `${product.title} จะปิดประมูลในอีกไม่กี่นาที`,
+          href: `/auctions/${product.id}`,
+          productId: product.id,
+        })),
+      });
+
+      await tx.emailNotification.createMany({
+        data: recipients.map((recipient) => ({
+          recipientId: recipient.id,
+          toEmail: recipient.email,
+          subject: `ประมูลใกล้จบ: ${product.title}`,
+          body: `${product.title} เหลือเวลาประมูลประมาณ 5 นาที`,
+          status: "PENDING" as const,
+        })),
+      });
+
+      if (favoriteRecipients.length > 0) {
+        await tx.favoriteProduct.updateMany({
+          where: {
+            productId: product.id,
+            userId: { in: favoriteRecipients.map((recipient) => recipient.id) },
+          },
+          data: { endingSoonNotifiedAt: now },
+        });
+      }
+
+      if (bidRecipients.length > 0) {
+        await tx.bid.updateMany({
+          where: {
+            productId: product.id,
+            bidderId: { in: bidRecipients.map((recipient) => recipient.id) },
+          },
+          data: { endingSoonNotifiedAt: now },
+        });
+      }
+
+      result.favoriteEndingSoon += recipients.length;
+    }
+
     const endingSoonProducts = await tx.product.findMany({
       where: {
         mode: "AUCTION",

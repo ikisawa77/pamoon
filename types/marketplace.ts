@@ -19,6 +19,7 @@ export interface AuctionProduct {
   nextBid: number;
   watchers: number;
   endsIn: string;
+  auctionEndsAt: string | null;
   imageUrl: string | null;
   imagePositionClass: string;
   hot: boolean;

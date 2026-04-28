@@ -18,19 +18,14 @@ const guestViewer: ViewerSummary = {
 };
 
 const formatAuctionEnds = (date: Date | null, mode: ListingMode) => {
-  if (mode === "buy") {
-    return "พร้อมส่ง";
-  }
+  if (mode === "buy") return "พร้อมส่ง";
+  if (!date) return "รอกำหนดวันปิดประมูล";
 
-  if (!date) {
-    return "รอวันปิดประมูล";
-  }
-
-  return `เหลือ 2 ปี (หมด ${date.toLocaleDateString("th-TH", {
+  return `หมด ${date.toLocaleDateString("th-TH", {
     day: "numeric",
     month: "short",
     year: "numeric",
-  })})`;
+  })}`;
 };
 
 const toCategory = (category: string) => category.toLowerCase() as ProductCategory;
@@ -62,6 +57,7 @@ export const getMarketplaceSnapshot = cache(
               },
             },
             bids: {
+              where: { status: "WINNING" },
               orderBy: { amountCents: "desc" },
               take: 1,
               include: {
@@ -104,7 +100,7 @@ export const getMarketplaceSnapshot = cache(
           code: `${product.cardCode} · ${product.setName}`,
           seller: product.sellerShop.name,
           shopId: product.sellerShop.slug,
-          topBidder: product.bids[0]?.bidder.displayName ?? "รอผู้เสนอราคา",
+          topBidder: product.bids[0]?.bidder.displayName ?? "ยังไม่มีผู้เสนอราคา",
           mode,
           category: toCategory(product.category),
           rarity: toRarity(product.rarity),
@@ -113,6 +109,7 @@ export const getMarketplaceSnapshot = cache(
           nextBid: moneyFromCents(product.nextBidCents),
           watchers: product.watcherCount,
           endsIn: formatAuctionEnds(product.auctionEndsAt, mode),
+          auctionEndsAt: product.auctionEndsAt?.toISOString() ?? null,
           imageUrl: product.imageUrl,
           imagePositionClass: `object-pos-${(index % 3) + 1}`,
           hot: index % 5 === 0,

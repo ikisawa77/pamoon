@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -38,9 +38,6 @@ interface ProductCatalogClientProps {
 
 interface FavoriteResponse {
   ok: boolean;
-  favorite?: {
-    productId: string;
-  };
   error?: {
     message: string;
   };
@@ -51,6 +48,7 @@ interface ActionResponse {
   product?: {
     currentPriceCents: number;
     nextBidCents: number;
+    auctionEndsAt: string | null;
   };
   error?: {
     message: string;
@@ -77,13 +75,30 @@ const money = (value: number) =>
     .format(value)
     .replace("THB", "฿");
 
+const getRemaining = (auctionEndsAt: string | null, now: number) => {
+  if (!auctionEndsAt) {
+    return null;
+  }
+
+  const totalSeconds = Math.max(0, Math.floor((new Date(auctionEndsAt).getTime() - now) / 1000));
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  return { days, hours, minutes, seconds, totalSeconds };
+};
+
 const sortProducts = (products: AuctionProduct[], sortMode: SortMode) =>
   [...products].sort((left, right) => {
     if (sortMode === "priceHigh") return right.currentPrice - left.currentPrice;
     if (sortMode === "priceLow") return left.currentPrice - right.currentPrice;
     if (sortMode === "popular") return right.watchers - left.watchers;
     if (sortMode === "latest") return right.id.localeCompare(left.id);
-    return left.endsIn.localeCompare(right.endsIn);
+
+    const leftEnds = left.auctionEndsAt ? new Date(left.auctionEndsAt).getTime() : Number.MAX_SAFE_INTEGER;
+    const rightEnds = right.auctionEndsAt ? new Date(right.auctionEndsAt).getTime() : Number.MAX_SAFE_INTEGER;
+    return leftEnds - rightEnds;
   });
 
 const ProductCatalogClient = ({ initialData, mode, title, subtitle, eyebrow }: ProductCatalogClientProps) => {
@@ -94,8 +109,14 @@ const ProductCatalogClient = ({ initialData, mode, title, subtitle, eyebrow }: P
   const [sortMode, setSortMode] = useState<SortMode>(mode === "buy" ? "latest" : "ending");
   const [dockOpen, setDockOpen] = useState(false);
   const [notice, setNotice] = useState("กดหัวใจเพื่อเพิ่มรายการโปรดและเปิดแจ้งเตือนอีเมลสำหรับประมูลที่ติดตาม");
+  const [now, setNow] = useState(() => Date.now());
   const viewer = initialData.viewer;
   const isGuest = viewer.role === "GUEST";
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const visibleProducts = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -118,6 +139,7 @@ const ProductCatalogClient = ({ initialData, mode, title, subtitle, eyebrow }: P
   const auctionCount = products.filter((product) => product.mode === "auction").length;
   const buyCount = products.filter((product) => product.mode === "buy").length;
   const favoriteCount = products.filter((product) => product.isFavorite).length;
+  const resultLabel = mode === "auction" ? "สินค้าประมูล" : mode === "buy" ? "สินค้าซื้อเลย" : "สินค้า";
 
   const toggleFavorite = async (product: AuctionProduct) => {
     if (isGuest) {
@@ -183,6 +205,7 @@ const ProductCatalogClient = ({ initialData, mode, title, subtitle, eyebrow }: P
                 ...item,
                 currentPrice: Math.round(updatedProduct.currentPriceCents / 100),
                 nextBid: Math.round(updatedProduct.nextBidCents / 100),
+                auctionEndsAt: updatedProduct.auctionEndsAt,
                 topBidder: viewer.displayName,
               }
             : item,
@@ -219,8 +242,8 @@ const ProductCatalogClient = ({ initialData, mode, title, subtitle, eyebrow }: P
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-6 lg:pl-24">
-        <section className="grid min-h-[340px] gap-8 border-b pb-8 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-end">
+      <main className="mx-auto max-w-[1600px] px-4 py-6 lg:pl-24">
+        <section className="grid gap-8 border-b pb-8 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-end">
           <div>
             <Badge className="mb-4">{eyebrow}</Badge>
             <h1 className="max-w-3xl text-4xl font-black leading-tight sm:text-6xl">{title}</h1>
@@ -248,7 +271,7 @@ const ProductCatalogClient = ({ initialData, mode, title, subtitle, eyebrow }: P
         <section className="mt-6 flex flex-col gap-4">
           <div className="flex flex-col justify-between gap-3 rounded-2xl border bg-background p-4 md:flex-row md:items-center">
             <div className="min-w-0">
-              <strong className="block">พบ {visibleProducts.length.toLocaleString("th-TH")} รายการ</strong>
+              <strong className="block">{resultLabel}: {visibleProducts.length.toLocaleString("th-TH")} รายการ</strong>
               <span className="text-sm text-muted-foreground">{notice}</span>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -260,53 +283,9 @@ const ProductCatalogClient = ({ initialData, mode, title, subtitle, eyebrow }: P
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8">
             {visibleProducts.map((product) => (
-              <article key={product.id} className="group overflow-hidden rounded-2xl border bg-background shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
-                <div className={cn("product-art relative aspect-[100/140] overflow-hidden bg-muted", product.imagePositionClass)}>
-                  {product.imageUrl ? (
-                    <Image src={product.imageUrl} alt={product.title} fill sizes="(min-width: 1280px) 25vw, (min-width: 768px) 33vw, 50vw" className="object-cover transition duration-300 group-hover:scale-105" />
-                  ) : null}
-                  <button
-                    type="button"
-                    className={cn("absolute right-3 top-3 flex size-10 items-center justify-center rounded-full border bg-background/90 shadow", product.isFavorite && "bg-primary text-primary-foreground")}
-                    onClick={() => toggleFavorite(product)}
-                    aria-label="เพิ่มรายการโปรด"
-                  >
-                    <Heart className={cn("size-5", product.isFavorite && "fill-current")} />
-                  </button>
-                </div>
-                <div className="grid gap-3 p-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <Badge variant={product.mode === "auction" ? "default" : "secondary"}>
-                      {product.mode === "auction" ? "ประมูล" : "ซื้อเลย"}
-                    </Badge>
-                    <Badge variant="outline">{product.rarity}</Badge>
-                  </div>
-                  <div>
-                    <h2 className="line-clamp-2 min-h-12 font-semibold">{product.title}</h2>
-                    <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">{product.code}</p>
-                  </div>
-                  <div className="flex items-end justify-between gap-3">
-                    <div>
-                      <span className="text-xs text-muted-foreground">{product.mode === "auction" ? "ราคาปัจจุบัน" : "ราคา"}</span>
-                      <strong className="block text-xl text-primary">{money(product.currentPrice)}</strong>
-                    </div>
-                    <span className="text-right text-xs text-muted-foreground">{product.mode === "auction" ? product.endsIn : `${product.watchers} views`}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-2 border-t pt-3 text-sm text-muted-foreground">
-                    <span className="inline-flex min-w-0 items-center gap-1 truncate">
-                      <Store className="size-4" />
-                      {product.seller}
-                    </span>
-                    {product.isFavorite ? <span className="inline-flex items-center gap-1 text-primary"><Bell className="size-4" />อีเมล</span> : null}
-                  </div>
-                  <Button type="button" onClick={() => handleProductAction(product)}>
-                    {product.mode === "auction" ? `เสนอราคา ${money(product.nextBid)}` : "ซื้อเลย"}
-                    <ChevronRight data-icon="inline-end" />
-                  </Button>
-                </div>
-              </article>
+              <AuctionCard key={product.id} product={product} now={now} onAction={handleProductAction} onToggleFavorite={toggleFavorite} />
             ))}
           </div>
         </section>
@@ -325,6 +304,79 @@ const ProductCatalogClient = ({ initialData, mode, title, subtitle, eyebrow }: P
     </div>
   );
 };
+
+interface AuctionCardProps {
+  product: AuctionProduct;
+  now: number;
+  onAction: (product: AuctionProduct) => void;
+  onToggleFavorite: (product: AuctionProduct) => void;
+}
+
+const AuctionCard = ({ product, now, onAction, onToggleFavorite }: AuctionCardProps) => {
+  const remaining = getRemaining(product.auctionEndsAt, now);
+
+  return (
+    <article className="group overflow-hidden rounded-xl border bg-background shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+      <Link href={product.mode === "auction" ? `/auctions/${product.id}` : "/buy-now"} className="block">
+        <div className={cn("product-art relative aspect-[100/140] overflow-hidden bg-muted", product.imagePositionClass)}>
+          {product.imageUrl ? (
+            <Image src={product.imageUrl} alt={product.title} fill sizes="(min-width: 1536px) 12vw, (min-width: 1024px) 25vw, 50vw" className="object-cover transition duration-300 group-hover:scale-105" />
+          ) : null}
+        </div>
+      </Link>
+      <div className="grid gap-3 p-3">
+        <div className="flex items-start justify-between gap-2">
+          <Badge variant={product.mode === "auction" ? "default" : "secondary"}>{product.mode === "auction" ? "ประมูล" : "ซื้อเลย"}</Badge>
+          <button
+            type="button"
+            className={cn("flex h-8 items-center gap-1 rounded-full border px-2 text-xs text-primary", product.isFavorite && "bg-primary text-primary-foreground")}
+            onClick={() => onToggleFavorite(product)}
+            aria-label="เพิ่มรายการโปรด"
+          >
+            <Heart className={cn("size-4", product.isFavorite && "fill-current")} />
+            {product.watchers}
+          </button>
+        </div>
+        <Link href={product.mode === "auction" ? `/auctions/${product.id}` : "/buy-now"} className="grid gap-1">
+          <h2 className="line-clamp-2 min-h-10 font-semibold underline-offset-2 group-hover:underline">{product.title}</h2>
+          <p className="line-clamp-2 min-h-10 text-xs text-muted-foreground">{product.code}</p>
+        </Link>
+        <div>
+          <span className="text-xs text-muted-foreground">{product.mode === "auction" ? "ราคาปัจจุบัน" : "ราคา"}</span>
+          <strong className="block text-lg text-primary">{money(product.currentPrice)}</strong>
+        </div>
+        {product.mode === "auction" ? <CountdownPill remaining={remaining} /> : null}
+        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+          <span className="inline-flex min-w-0 items-center gap-1 truncate">
+            <Store className="size-4" />
+            {product.seller}
+          </span>
+          {product.isFavorite ? <span className="inline-flex items-center gap-1 text-primary"><Bell className="size-4" />อีเมล</span> : null}
+        </div>
+        <Button type="button" size="sm" onClick={() => onAction(product)}>
+          {product.mode === "auction" ? `บิด ${money(product.nextBid)}` : "ซื้อเลย"}
+          <ChevronRight data-icon="inline-end" />
+        </Button>
+      </div>
+    </article>
+  );
+};
+
+const CountdownPill = ({ remaining }: { remaining: ReturnType<typeof getRemaining> }) => (
+  <div className="grid grid-cols-4 rounded-full bg-[#191919] px-3 py-2 text-center text-white">
+    {[
+      ["วัน", remaining?.days ?? 0],
+      ["ชั่วโมง", remaining?.hours ?? 0],
+      ["นาที", remaining?.minutes ?? 0],
+      ["วินาที", remaining?.seconds ?? 0],
+    ].map(([label, value]) => (
+      <span key={label} className="border-r border-white/15 last:border-r-0">
+        <strong className="block text-sm leading-none">{String(value).padStart(2, "0")}</strong>
+        <span className="text-[10px] text-white/65">{label}</span>
+      </span>
+    ))}
+  </div>
+);
 
 interface MetricProps {
   icon: LucideIcon;

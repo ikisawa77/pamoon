@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db/prisma";
 import { apiError, unknownError, validationError } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { prisma } from "@/lib/db/prisma";
 import { createBidApiSchema } from "@/lib/schemas";
 
 export const runtime = "nodejs";
+
+const ANTI_SNIPE_WINDOW_MS = 5 * 60 * 1000;
+const ANTI_SNIPE_EXTENSION_MS = 5 * 60 * 1000;
+
+const money = (amountCents: number) => Math.round(amountCents / 100).toLocaleString("th-TH");
 
 export const POST = async (request: NextRequest) => {
   try {
@@ -28,6 +33,7 @@ export const POST = async (request: NextRequest) => {
     const input = parsed.data;
 
     const result = await prisma.$transaction(async (tx) => {
+      const now = new Date();
       const product = await tx.product.findUnique({
         where: { id: input.productId },
         include: {
@@ -36,33 +42,19 @@ export const POST = async (request: NextRequest) => {
               owner: {
                 select: {
                   id: true,
-                },
-              },
-            },
-          },
-          bids: {
-            where: {
-              status: "ACTIVE",
-            },
-            select: {
-              bidderId: true,
-              bidder: {
-                select: {
-                  id: true,
                   email: true,
                   displayName: true,
                 },
               },
             },
           },
-          favorites: {
+          bids: {
             where: {
-              emailNotify: true,
-              notifyOutbid: true,
-              disabledAfterAuctionAt: null,
+              status: "WINNING",
             },
+            orderBy: { amountCents: "desc" },
             include: {
-              user: {
+              bidder: {
                 select: {
                   id: true,
                   email: true,
@@ -79,26 +71,34 @@ export const POST = async (request: NextRequest) => {
         throw new Error("สินค้านี้ไม่พร้อมรับการประมูล");
       }
 
+      if (!product.auctionEndsAt || product.auctionEndsAt <= now) {
+        throw new Error("รายการประมูลนี้หมดเวลาแล้ว");
+      }
+
       if (!bidder || bidder.status !== "ACTIVE") {
         throw new Error("บัญชีผู้เสนอราคายังไม่พร้อมใช้งาน");
       }
 
       if (input.amountCents < product.nextBidCents) {
-        throw new Error("ราคาที่เสนอต้องมากกว่าหรือเท่ากับราคาขั้นต่ำถัดไป");
+        throw new Error("ราคาที่เสนอจะต้องมากกว่าหรือเท่ากับราคาขั้นต่ำถัดไป");
       }
 
       if (bidder.bidLimitCents < input.amountCents) {
         throw new Error("วงเงินประมูลไม่เพียงพอ");
       }
 
-      const previousBidders = product.bids
-        .map((bidItem) => bidItem.bidder)
-        .filter((bidderItem) => bidderItem.id !== bidder.id);
-      const previousBidderIds = Array.from(new Set(previousBidders.map((bidderItem) => bidderItem.id)));
+      const previousWinningBids = product.bids.filter((bid) => bid.bidderId !== bidder.id);
+      const previousWinnersToNotify = previousWinningBids.filter((bid) => !bid.outbidNotifiedAt);
+      const previousWinnerIds = Array.from(new Set(previousWinnersToNotify.map((bid) => bid.bidderId)));
+      const nextAuctionEndsAt =
+        product.auctionEndsAt.getTime() - now.getTime() <= ANTI_SNIPE_WINDOW_MS
+          ? new Date(now.getTime() + ANTI_SNIPE_EXTENSION_MS)
+          : product.auctionEndsAt;
+      const auctionExtended = nextAuctionEndsAt.getTime() !== product.auctionEndsAt.getTime();
 
       await tx.bid.updateMany({
-        where: { productId: product.id, status: "ACTIVE" },
-        data: { status: "OUTBID" },
+        where: { productId: product.id, status: { in: ["ACTIVE", "WINNING"] } },
+        data: { status: "OUTBID", outbidNotifiedAt: now },
       });
 
       const bid = await tx.bid.create({
@@ -115,6 +115,7 @@ export const POST = async (request: NextRequest) => {
         data: {
           currentPriceCents: input.amountCents,
           nextBidCents: input.amountCents + Math.max(25000, Math.round(input.amountCents * 0.05)),
+          auctionEndsAt: nextAuctionEndsAt,
         },
       });
 
@@ -137,7 +138,7 @@ export const POST = async (request: NextRequest) => {
           type: "BID_WINNING",
           title: "เสนอราคาสำเร็จ",
           message: `คุณเป็นผู้เสนอราคาสูงสุดของ ${updatedProduct.title}`,
-          href: "/account/auctions",
+          href: `/auctions/${updatedProduct.id}`,
           productId: updatedProduct.id,
           bidId: bid.id,
         },
@@ -149,76 +150,81 @@ export const POST = async (request: NextRequest) => {
           actorId: bidder.id,
           type: "BID_PLACED",
           title: "มีผู้เสนอราคาใหม่",
-          message: `${bidder.displayName} เสนอราคา ${Math.round(input.amountCents / 100).toLocaleString("th-TH")} บาท สำหรับ ${updatedProduct.title}`,
-          href: "/account/auctions",
+          message: `${bidder.displayName} เสนอราคา ${money(input.amountCents)} บาท สำหรับ ${updatedProduct.title}`,
+          href: `/auctions/${updatedProduct.id}`,
           productId: updatedProduct.id,
           bidId: bid.id,
         },
       });
 
-      if (previousBidderIds.length > 0) {
+      if (previousWinnerIds.length > 0) {
         await tx.notification.createMany({
-          data: previousBidderIds.map((recipientId) => ({
+          data: previousWinnerIds.map((recipientId) => ({
             recipientId,
             actorId: bidder.id,
             type: "BID_OUTBID" as const,
-            title: "มีคนเสนอราคาสูงกว่า",
+            title: "มีคนเสนอราคาสูงกว่าคุณ",
             message: `${updatedProduct.title} มีราคาใหม่สูงกว่าราคาของคุณ`,
-            href: "/account/auctions",
+            href: `/auctions/${updatedProduct.id}`,
             productId: updatedProduct.id,
             bidId: bid.id,
           })),
         });
-      }
 
-      const favoriteUsers = product.favorites
-        .map((favorite) => favorite.user)
-        .filter((favoriteUser) => favoriteUser.id !== bidder.id && favoriteUser.id !== product.sellerShop.owner.id);
-      const favoriteUserIds = Array.from(new Set(favoriteUsers.map((favoriteUser) => favoriteUser.id)));
-
-      if (favoriteUserIds.length > 0) {
-        await tx.notification.createMany({
-          data: favoriteUserIds.map((recipientId) => ({
-            recipientId,
-            actorId: bidder.id,
-            type: "BID_OUTBID" as const,
-            title: "รายการโปรดมีราคาใหม่",
-            message: `${updatedProduct.title} มีผู้เสนอราคาใหม่ ${Math.round(input.amountCents / 100).toLocaleString("th-TH")} บาท`,
-            href: "/collection",
-            productId: updatedProduct.id,
-            bidId: bid.id,
-          })),
-        });
-      }
-
-      const emailRecipients = [
-        ...previousBidders.map((recipient) => ({
-          recipientId: recipient.id,
-          toEmail: recipient.email,
-          subject: `คุณถูกประมูลทับ: ${updatedProduct.title}`,
-          body: `มีผู้เสนอราคา ${Math.round(input.amountCents / 100).toLocaleString("th-TH")} บาทในรายการ ${updatedProduct.title} กรุณาเข้าไปเสนอราคาใหม่หากยังสนใจ`,
-        })),
-        ...favoriteUsers.map((recipient) => ({
-          recipientId: recipient.id,
-          toEmail: recipient.email,
-          subject: `รายการโปรดมีราคาใหม่: ${updatedProduct.title}`,
-          body: `${updatedProduct.title} มีผู้เสนอราคาใหม่ ${Math.round(input.amountCents / 100).toLocaleString("th-TH")} บาท`,
-        })),
-      ];
-
-      if (emailRecipients.length > 0) {
         await tx.emailNotification.createMany({
-          data: emailRecipients.map((email) => ({
-            ...email,
+          data: previousWinnersToNotify.map((previousBid) => ({
+            recipientId: previousBid.bidder.id,
+            toEmail: previousBid.bidder.email,
+            subject: `คุณถูกประมูลทับ: ${updatedProduct.title}`,
+            body: `มีผู้เสนอราคา ${money(input.amountCents)} บาทในรายการ ${updatedProduct.title} หากยังสนใจ กรุณาเข้าไปเสนอราคาใหม่`,
             status: "PENDING" as const,
           })),
+        });
+      }
+
+      if (auctionExtended) {
+        await tx.notification.createMany({
+          data: [
+            {
+              recipientId: bidder.id,
+              actorId: bidder.id,
+              type: "SYSTEM" as const,
+              title: "ต่อเวลาประมูลอัตโนมัติ",
+              message: `${updatedProduct.title} ถูกต่อเวลาอีก 5 นาที เพราะมีการเสนอราคาในช่วงท้าย`,
+              href: `/auctions/${updatedProduct.id}`,
+              productId: updatedProduct.id,
+              bidId: bid.id,
+            },
+            {
+              recipientId: product.sellerShop.owner.id,
+              actorId: bidder.id,
+              type: "SYSTEM" as const,
+              title: "ต่อเวลาประมูลอัตโนมัติ",
+              message: `${updatedProduct.title} ถูกต่อเวลาอีก 5 นาที`,
+              href: `/auctions/${updatedProduct.id}`,
+              productId: updatedProduct.id,
+              bidId: bid.id,
+            },
+          ],
         });
       }
 
       return { bid, product: updatedProduct };
     });
 
-    return NextResponse.json({ ok: true, ...result }, { status: 201 });
+    return NextResponse.json(
+      {
+        ok: true,
+        bid: result.bid,
+        product: {
+          id: result.product.id,
+          currentPriceCents: result.product.currentPriceCents,
+          nextBidCents: result.product.nextBidCents,
+          auctionEndsAt: result.product.auctionEndsAt?.toISOString() ?? null,
+        },
+      },
+      { status: 201 },
+    );
   } catch (error: unknown) {
     if (error instanceof Error) {
       return apiError(error.message, 400);

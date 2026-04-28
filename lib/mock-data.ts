@@ -120,6 +120,7 @@ const makeProduct = (index: number, mode: ListingMode): AuctionProduct => {
     nextBid,
     watchers: 12 + (index * 11) % 139,
     endsIn: mode === "auction" ? auctionEndLabel : "พร้อมส่ง",
+    auctionEndsAt: mode === "auction" ? "2028-04-28T17:00:00.000Z" : null,
     imageUrl: null,
     imagePositionClass: imagePositions[index % imagePositions.length],
     hot: index >= 40,

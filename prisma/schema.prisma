@@ -237,6 +237,8 @@ model Bid {
   bidderId    String
   amountCents Int
   status      BidStatus @default(ACTIVE)
+  outbidNotifiedAt DateTime?
+  endingSoonNotifiedAt DateTime?
   createdAt   DateTime  @default(now())
   product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
   bidder      User      @relation(fields: [bidderId], references: [id], onDelete: Cascade)

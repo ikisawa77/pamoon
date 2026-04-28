@@ -32,7 +32,7 @@ export const createProductApiSchema = listingSchema.extend({
 
 export const createBidApiSchema = z.object({
   productId: z.string().min(1),
-  bidderId: z.string().min(1),
+  bidderId: z.string().min(1).optional(),
   amountCents: z.coerce.number().int().min(1),
 });
 
