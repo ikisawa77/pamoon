@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { Bell, CheckCheck } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Bell, CheckCheck, MessageCircle, PackageCheck, ShieldAlert, Trophy } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,21 +25,47 @@ export interface NotificationItem {
   } | null;
 }
 
+interface NotificationsResponse {
+  ok: boolean;
+  notifications: NotificationItem[];
+  unreadCount: number;
+}
+
 interface NotificationsClientProps {
   initialNotifications: NotificationItem[];
   initialUnreadCount: number;
 }
 
+type NotificationCategory = "all" | "orders" | "auctions" | "chat" | "system" | "action";
+
 const notificationTypeLabel: Record<string, string> = {
   ORDER_CREATED: "คำสั่งซื้อ",
-  ORDER_PAID: "คำสั่งซื้อร้านค้า",
+  ORDER_PAID: "ชำระเงิน",
   ORDER_SHIPPED: "จัดส่ง",
-  BID_PLACED: "ประมูลร้านค้า",
+  BID_PLACED: "เสนอราคา",
   BID_OUTBID: "ถูกเสนอสูงกว่า",
-  BID_WINNING: "ประมูล",
+  BID_WINNING: "กำลังชนะ",
+  AUCTION_WON: "ชนะประมูล",
+  PAYMENT_DUE: "รอชำระ",
+  PAYMENT_OVERDUE: "เลยกำหนดชำระ",
+  SHIPPING_DUE: "ต้องจัดส่ง",
+  SHIPPING_EXTENDED: "ขยายเวลาส่ง",
+  SHIPPING_OVERDUE: "เลยกำหนดส่ง",
+  REFUND_CREATED: "คืนเงิน",
+  ACCOUNT_SUSPENDED: "ระงับบัญชี",
+  CHAT_MESSAGE: "แชท",
   SHOP_MESSAGE: "แชท",
   SYSTEM: "ระบบ",
 };
+
+const categories: Array<{ value: NotificationCategory; label: string; icon: typeof Bell }> = [
+  { value: "all", label: "ทั้งหมด", icon: Bell },
+  { value: "orders", label: "คำสั่งซื้อ", icon: PackageCheck },
+  { value: "auctions", label: "ประมูล", icon: Trophy },
+  { value: "chat", label: "แชท", icon: MessageCircle },
+  { value: "system", label: "ระบบ", icon: ShieldAlert },
+  { value: "action", label: "ต้องทำตอนนี้", icon: ShieldAlert },
+];
 
 const formatDate = (value: string | Date) =>
   new Intl.DateTimeFormat("th-TH", {
@@ -50,11 +76,43 @@ const formatDate = (value: string | Date) =>
 const NotificationsClient = ({ initialNotifications, initialUnreadCount }: NotificationsClientProps) => {
   const [notifications, setNotifications] = useState(initialNotifications);
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
-  const [filter, setFilter] = useState<"all" | "unread">("all");
+  const [status, setStatus] = useState<"all" | "unread">("all");
+  const [category, setCategory] = useState<NotificationCategory>("all");
+
+  const loadNotifications = useCallback(async () => {
+    const response = await fetch(`/api/notifications?status=${status}&category=${category}&limit=80`, {
+      cache: "no-store",
+    });
+    const result = (await response.json()) as NotificationsResponse;
+
+    if (response.ok && result.ok) {
+      setNotifications(result.notifications);
+      setUnreadCount(result.unreadCount);
+    }
+  }, [category, status]);
+
+  useEffect(() => {
+    void loadNotifications();
+  }, [loadNotifications]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !("EventSource" in window)) {
+      return;
+    }
+
+    const eventSource = new EventSource("/api/notifications/stream");
+    eventSource.addEventListener("notification", () => {
+      void loadNotifications();
+    });
+
+    return () => {
+      eventSource.close();
+    };
+  }, [loadNotifications]);
 
   const visibleNotifications = useMemo(
-    () => notifications.filter((notification) => filter === "all" || !notification.readAt),
-    [filter, notifications],
+    () => notifications.filter((notification) => status === "all" || !notification.readAt),
+    [status, notifications],
   );
 
   const markOneRead = async (id: string) => {
@@ -88,10 +146,25 @@ const NotificationsClient = ({ initialNotifications, initialUnreadCount }: Notif
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
-          <Button type="button" variant={filter === "all" ? "secondary" : "ghost"} onClick={() => setFilter("all")}>
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
+            {categories.map((item) => (
+              <Button
+                key={item.value}
+                type="button"
+                variant={category === item.value ? "secondary" : "ghost"}
+                className="justify-start"
+                onClick={() => setCategory(item.value)}
+              >
+                <item.icon data-icon="inline-start" />
+                {item.label}
+              </Button>
+            ))}
+          </div>
+          <div className="my-2 border-t" />
+          <Button type="button" variant={status === "all" ? "secondary" : "ghost"} onClick={() => setStatus("all")}>
             ทั้งหมด
           </Button>
-          <Button type="button" variant={filter === "unread" ? "secondary" : "ghost"} onClick={() => setFilter("unread")}>
+          <Button type="button" variant={status === "unread" ? "secondary" : "ghost"} onClick={() => setStatus("unread")}>
             ยังไม่อ่าน ({unreadCount})
           </Button>
           <Button type="button" variant="outline" disabled={unreadCount === 0} onClick={markAllRead}>

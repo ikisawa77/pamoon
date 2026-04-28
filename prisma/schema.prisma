@@ -88,6 +88,14 @@ enum OrderStatus {
   COMPLETED
   CANCELLED
   DISPUTED
+  PAYMENT_EXPIRED
+  REFUND_PENDING
+  REFUNDED
+}
+
+enum OrderSource {
+  BUY_NOW
+  AUCTION
 }
 
 enum NotificationType {
@@ -97,8 +105,32 @@ enum NotificationType {
   BID_PLACED
   BID_OUTBID
   BID_WINNING
+  AUCTION_WON
+  PAYMENT_DUE
+  PAYMENT_OVERDUE
+  SHIPPING_DUE
+  SHIPPING_EXTENDED
+  SHIPPING_OVERDUE
+  REFUND_CREATED
+  ACCOUNT_SUSPENDED
+  CHAT_MESSAGE
   SHOP_MESSAGE
   SYSTEM
+}
+
+enum ChatThreadStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum ModerationCaseType {
+  BUYER_PAYMENT_OVERDUE
+  SELLER_SHIPPING_OVERDUE
+}
+
+enum ModerationCaseStatus {
+  OPEN
+  RESOLVED
 }
 
 model User {
@@ -118,6 +150,10 @@ model User {
   orders             Order[]
   notifications      Notification[]      @relation("NotificationRecipient")
   sentNotifications  Notification[]      @relation("NotificationActor")
+  buyerChatThreads   ChatThread[]        @relation("ChatBuyer")
+  chatMessages       ChatMessage[]
+  moderationCases    ModerationCase[]    @relation("ModerationUser")
+  assignedCases      ModerationCase[]    @relation("ModerationAssignee")
 
   @@index([role])
   @@index([status])
@@ -136,6 +172,8 @@ model Shop {
   owner       User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   products    Product[]
   orders      Order[]
+  chatThreads ChatThread[]
+  moderationCases ModerationCase[]
 
   @@index([ownerId])
   @@index([status])
@@ -167,6 +205,7 @@ model Product {
   bids               Bid[]
   order              Order?
   notifications      Notification[]
+  chatThreads        ChatThread[]
 
   @@index([sellerShopId])
   @@index([mode, status])
@@ -225,10 +264,27 @@ model Order {
   buyer              User        @relation(fields: [buyerId], references: [id], onDelete: Restrict)
   sellerShop         Shop        @relation(fields: [sellerShopId], references: [id], onDelete: Restrict)
   notifications      Notification[]
+  chatThread         ChatThread?
+  moderationCases    ModerationCase[]
+  source             OrderSource @default(BUY_NOW)
+  paymentDueAt       DateTime?
+  paidAt             DateTime?
+  shipDueAt          DateTime?
+  shippedAt          DateTime?
+  shippingExtendedAt DateTime?
+  shippingExtensionCount Int     @default(0)
+  refundDueAt        DateTime?
+  refundedAt         DateTime?
+  completedAt        DateTime?
+  cancelledAt        DateTime?
+  trackingNumber     String?     @db.VarChar(120)
 
   @@index([buyerId])
   @@index([sellerShopId])
   @@index([status])
+  @@index([paymentDueAt])
+  @@index([shipDueAt])
+  @@index([refundDueAt])
 }
 
 model Notification {
@@ -256,4 +312,63 @@ model Notification {
   @@index([productId])
   @@index([orderId])
   @@index([bidId])
+}
+
+model ChatThread {
+  id            String           @id @default(cuid())
+  orderId       String           @unique
+  buyerId       String
+  sellerShopId  String
+  productId     String
+  status        ChatThreadStatus @default(ACTIVE)
+  lastMessageAt DateTime?
+  archivedAt    DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  order         Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  buyer         User             @relation("ChatBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
+  sellerShop    Shop             @relation(fields: [sellerShopId], references: [id], onDelete: Cascade)
+  product       Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  messages      ChatMessage[]
+
+  @@index([buyerId, status])
+  @@index([sellerShopId, status])
+  @@index([lastMessageAt])
+}
+
+model ChatMessage {
+  id        String     @id @default(cuid())
+  threadId  String
+  senderId  String
+  body      String     @db.VarChar(1000)
+  readAt    DateTime?
+  createdAt DateTime   @default(now())
+  thread    ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender    User       @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, createdAt])
+  @@index([senderId])
+  @@index([readAt])
+}
+
+model ModerationCase {
+  id           String               @id @default(cuid())
+  type         ModerationCaseType
+  status       ModerationCaseStatus @default(OPEN)
+  userId       String?
+  shopId       String?
+  orderId      String?
+  assignedToId String?
+  reason       String               @db.VarChar(500)
+  createdAt    DateTime             @default(now())
+  resolvedAt   DateTime?
+  user         User?                @relation("ModerationUser", fields: [userId], references: [id], onDelete: SetNull)
+  shop         Shop?                @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  order        Order?               @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  assignedTo   User?                @relation("ModerationAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@index([type, status])
+  @@index([userId])
+  @@index([shopId])
+  @@index([orderId])
 }

@@ -45,6 +45,8 @@ const AdminPage = async () => {
     latestShops,
     latestProducts,
     latestTransactions,
+    moderationCases,
+    refundPendingOrders,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.shop.count(),
@@ -88,6 +90,26 @@ const AdminPage = async () => {
             email: true,
           },
         },
+      },
+    }),
+    prisma.moderationCase.findMany({
+      where: { status: "OPEN" },
+      orderBy: { createdAt: "desc" },
+      take: 8,
+      include: {
+        user: { select: { email: true, displayName: true, status: true } },
+        shop: { select: { name: true, status: true } },
+        order: { include: { product: { select: { title: true } } } },
+      },
+    }),
+    prisma.order.findMany({
+      where: { status: { in: ["REFUND_PENDING", "PAYMENT_EXPIRED"] } },
+      orderBy: { updatedAt: "desc" },
+      take: 6,
+      include: {
+        buyer: { select: { email: true, status: true } },
+        sellerShop: { select: { name: true, status: true } },
+        product: { select: { title: true } },
       },
     }),
   ]);
@@ -208,6 +230,61 @@ const AdminPage = async () => {
             ))}
           </CardContent>
         </Card>
+
+        <div className="grid gap-6 xl:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>คิวตรวจสอบ SLA</CardTitle>
+              <CardDescription>ผู้ซื้อไม่ชำระเงิน ร้านค้าไม่ส่งสินค้า และบัญชีที่ถูกระงับรอแอดมินตรวจ</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              {moderationCases.length === 0 ? (
+                <div className="rounded-md border bg-background p-4 text-sm text-muted-foreground">ยังไม่มีเคสที่ต้องตรวจสอบ</div>
+              ) : (
+                moderationCases.map((moderationCase) => (
+                  <div key={moderationCase.id} className="rounded-md border bg-background p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <strong>{moderationCase.type}</strong>
+                      <Badge variant="destructive">{moderationCase.status}</Badge>
+                    </div>
+                    <p className="mt-2 text-sm text-muted-foreground">{moderationCase.reason}</p>
+                    <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
+                      <span>สมาชิก: {moderationCase.user?.email ?? "-"}</span>
+                      <span>ร้านค้า: {moderationCase.shop?.name ?? "-"}</span>
+                      <span>สินค้า: {moderationCase.order?.product.title ?? "-"}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>คำสั่งซื้อเสี่ยงสูง</CardTitle>
+              <CardDescription>รายการหมดเวลาชำระหรือรอคืนเงินภายใน 24 ชม.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              {refundPendingOrders.length === 0 ? (
+                <div className="rounded-md border bg-background p-4 text-sm text-muted-foreground">ยังไม่มีคำสั่งซื้อเสี่ยงสูง</div>
+              ) : (
+                refundPendingOrders.map((order) => (
+                  <div key={order.id} className="rounded-md border bg-background p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <strong>{order.product.title}</strong>
+                      <Badge variant="outline">{order.status}</Badge>
+                    </div>
+                    <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
+                      <span>ผู้ซื้อ: {order.buyer.email} ({order.buyer.status})</span>
+                      <span>ร้านค้า: {order.sellerShop.name} ({order.sellerShop.status})</span>
+                      <span>ครบกำหนดคืนเงิน: {order.refundDueAt ? order.refundDueAt.toLocaleString("th-TH") : "-"}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </section>
     </main>
   );

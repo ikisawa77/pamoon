@@ -10,15 +10,26 @@ interface UnreadCountResponse {
   unreadCount: number;
 }
 
+interface StreamNotification {
+  unreadCount: number;
+  latestNotification: {
+    id: string;
+    title: string;
+    message: string;
+  } | null;
+}
+
 interface NotificationBellProps {
   className?: string;
 }
 
 const NotificationBell = ({ className }: NotificationBellProps) => {
   const [unreadCount, setUnreadCount] = useState(0);
+  const [latestTitle, setLatestTitle] = useState("แจ้งเตือน");
 
   useEffect(() => {
     let mounted = true;
+    let fallbackInterval: number | undefined;
 
     const loadUnreadCount = async () => {
       try {
@@ -35,17 +46,55 @@ const NotificationBell = ({ className }: NotificationBellProps) => {
       }
     };
 
-    void loadUnreadCount();
-    const interval = window.setInterval(loadUnreadCount, 8000);
+    const startFallback = () => {
+      void loadUnreadCount();
+      fallbackInterval = window.setInterval(loadUnreadCount, 8000);
+    };
+
+    if (typeof window === "undefined" || !("EventSource" in window)) {
+      startFallback();
+      return () => {
+        mounted = false;
+        if (fallbackInterval) {
+          window.clearInterval(fallbackInterval);
+        }
+      };
+    }
+
+    const eventSource = new EventSource("/api/notifications/stream");
+    eventSource.addEventListener("notification", (event) => {
+      const payload = JSON.parse((event as MessageEvent<string>).data) as StreamNotification;
+
+      if (!mounted) {
+        return;
+      }
+
+      setUnreadCount(payload.unreadCount);
+
+      if (payload.latestNotification) {
+        setLatestTitle(payload.latestNotification.title);
+      }
+    });
+    eventSource.onerror = () => {
+      eventSource.close();
+
+      if (!fallbackInterval) {
+        startFallback();
+      }
+    };
 
     return () => {
       mounted = false;
-      window.clearInterval(interval);
+      eventSource.close();
+
+      if (fallbackInterval) {
+        window.clearInterval(fallbackInterval);
+      }
     };
   }, []);
 
   return (
-    <Button asChild variant="ghost" size="icon" className={className} aria-label="แจ้งเตือน">
+    <Button asChild variant="ghost" size="icon" className={className} aria-label="แจ้งเตือน" title={latestTitle}>
       <Link href="/notifications" className="relative">
         <Bell />
         {unreadCount > 0 ? (

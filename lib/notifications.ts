@@ -10,6 +10,15 @@ export const createNotification = async (input: {
     | "BID_PLACED"
     | "BID_OUTBID"
     | "BID_WINNING"
+    | "AUCTION_WON"
+    | "PAYMENT_DUE"
+    | "PAYMENT_OVERDUE"
+    | "SHIPPING_DUE"
+    | "SHIPPING_EXTENDED"
+    | "SHIPPING_OVERDUE"
+    | "REFUND_CREATED"
+    | "ACCOUNT_SUSPENDED"
+    | "CHAT_MESSAGE"
     | "SHOP_MESSAGE"
     | "SYSTEM";
   title: string;

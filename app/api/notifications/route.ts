@@ -16,6 +16,7 @@ export const GET = async (request: NextRequest) => {
 
     const parsed = notificationQuerySchema.safeParse({
       status: request.nextUrl.searchParams.get("status") ?? "all",
+      category: request.nextUrl.searchParams.get("category") ?? "all",
       limit: request.nextUrl.searchParams.get("limit") ?? 50,
     });
 
@@ -24,11 +25,21 @@ export const GET = async (request: NextRequest) => {
     }
 
     const status = parsed.data.status ?? "all";
+    const category = parsed.data.category ?? "all";
+    const categoryTypes = {
+      all: undefined,
+      orders: ["ORDER_CREATED", "ORDER_PAID", "ORDER_SHIPPED", "SHIPPING_DUE", "SHIPPING_EXTENDED", "SHIPPING_OVERDUE", "REFUND_CREATED"],
+      auctions: ["BID_PLACED", "BID_OUTBID", "BID_WINNING", "AUCTION_WON", "PAYMENT_DUE", "PAYMENT_OVERDUE"],
+      chat: ["CHAT_MESSAGE", "SHOP_MESSAGE"],
+      system: ["SYSTEM", "ACCOUNT_SUSPENDED"],
+      action: ["PAYMENT_DUE", "PAYMENT_OVERDUE", "SHIPPING_DUE", "SHIPPING_OVERDUE", "REFUND_CREATED", "ACCOUNT_SUSPENDED"],
+    } as const;
     const [notifications, unreadCount] = await Promise.all([
       prisma.notification.findMany({
         where: {
           recipientId: user.id,
           ...(status === "unread" ? { readAt: null } : {}),
+          ...(categoryTypes[category] ? { type: { in: [...categoryTypes[category]] } } : {}),
         },
         orderBy: { createdAt: "desc" },
         take: parsed.data.limit ?? 50,

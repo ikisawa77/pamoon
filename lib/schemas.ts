@@ -48,8 +48,19 @@ export const createOrderApiSchema = z.object({
   shippingAddress: z.string().min(5).max(1000).optional(),
 });
 
+export const orderActionSchema = z.object({
+  action: z.enum(["pay", "ship", "extend-shipping"]),
+  trackingNumber: z.string().trim().min(3).max(120).optional(),
+});
+
+export const chatMessageSchema = z.object({
+  threadId: z.string().min(1),
+  body: z.string().trim().min(1).max(1000),
+});
+
 export const notificationQuerySchema = z.object({
   status: z.enum(["all", "unread"]).optional(),
+  category: z.enum(["all", "orders", "auctions", "chat", "system", "action"]).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
 });
 
@@ -65,5 +76,7 @@ export type CreateProductApiInput = z.infer<typeof createProductApiSchema>;
 export type CreateBidApiInput = z.infer<typeof createBidApiSchema>;
 export type TopUpApiInput = z.infer<typeof topUpApiSchema>;
 export type CreateOrderApiInput = z.infer<typeof createOrderApiSchema>;
+export type OrderActionInput = z.infer<typeof orderActionSchema>;
+export type ChatMessageInput = z.infer<typeof chatMessageSchema>;
 export type NotificationQueryInput = z.infer<typeof notificationQuerySchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
