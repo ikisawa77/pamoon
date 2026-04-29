@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Package, Star, Store, Trophy, type LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { AppFooter } from "@/components/shared/AppFooter";
 import { NotificationBell } from "@/components/shared/NotificationBell";
 import { getViewerSummary } from "@/lib/auth/viewer";
 import { prisma } from "@/lib/db/prisma";
@@ -131,6 +132,7 @@ const ShopsPage = async () => {
           ))}
         </section>
       </main>
+      <AppFooter />
     </div>
   );
 };

@@ -7,6 +7,7 @@ import { Bell, BellOff, Clock3, Heart, Mail, Store, Trash2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { AppFooter } from "@/components/shared/AppFooter";
 import { NotificationBell } from "@/components/shared/NotificationBell";
 import { cn } from "@/lib/utils";
 
@@ -220,6 +221,7 @@ const FavoritesClient = ({ initialFavorites, viewerName }: FavoritesClientProps)
           </section>
         )}
       </main>
+      <AppFooter />
     </div>
   );
 };

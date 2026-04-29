@@ -22,6 +22,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AppFooter } from "@/components/shared/AppFooter";
 import { NotificationBell } from "@/components/shared/NotificationBell";
 import { cn } from "@/lib/utils";
 import type { AuctionProduct, ListingMode, MarketplaceSnapshot, ProductCategory, ProductRarity } from "@/types/marketplace";
@@ -408,6 +409,7 @@ const ProductCatalogClient = ({ initialData, mode, title, subtitle, eyebrow }: P
         onRarityChange={setRarity}
         onCategoryChange={setCategory}
       />
+      <AppFooter />
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { AppFooter } from "@/components/shared/AppFooter";
 import { FavoritesClient } from "@/components/shared/FavoritesClient";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { prisma } from "@/lib/db/prisma";
@@ -11,15 +12,18 @@ const CollectionPage = async () => {
 
   if (!user) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#f6f6f2] px-4">
-        <section className="max-w-md rounded-2xl border bg-background p-8 text-center shadow-sm">
-          <h1 className="text-3xl font-bold">รายการโปรด</h1>
-          <p className="mt-3 text-muted-foreground">กรุณาเข้าสู่ระบบก่อนดูและจัดการรายการโปรด</p>
-          <Button asChild className="mt-6">
-            <Link href="/login">เข้าสู่ระบบ</Link>
-          </Button>
-        </section>
-      </main>
+      <div className="min-h-screen bg-[#f6f6f2]">
+        <main className="flex min-h-[70vh] items-center justify-center px-4">
+          <section className="max-w-md rounded-2xl border bg-background p-8 text-center shadow-sm">
+            <h1 className="text-3xl font-bold">รายการโปรด</h1>
+            <p className="mt-3 text-muted-foreground">กรุณาเข้าสู่ระบบก่อนดูและจัดการรายการโปรด</p>
+            <Button asChild className="mt-6">
+              <Link href="/login">เข้าสู่ระบบ</Link>
+            </Button>
+          </section>
+        </main>
+        <AppFooter />
+      </div>
     );
   }
 

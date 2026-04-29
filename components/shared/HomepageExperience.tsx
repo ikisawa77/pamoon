@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NotificationBell } from "@/components/shared/NotificationBell";
+import { richTextToPlainText, sanitizeRichText } from "@/lib/richtext";
 import { cn } from "@/lib/utils";
 
 interface HomeContentItem {
@@ -400,7 +401,15 @@ const ArticleSection = ({ articles }: { articles: HomeContentItem[] }) => (
           <div className="p-5">
             <Badge variant="outline">{article.badge ?? "Article"}</Badge>
             <h3 className="mt-4 text-xl font-bold">{article.title}</h3>
-            <p className="mt-2 text-sm text-muted-foreground">{article.body ?? article.subtitle}</p>
+            {article.body ? (
+              <div
+                className="mt-2 line-clamp-3 text-sm leading-7 text-muted-foreground [&_a]:text-primary [&_blockquote]:border-l-2 [&_blockquote]:pl-3 [&_strong]:text-foreground"
+                dangerouslySetInnerHTML={{ __html: sanitizeRichText(article.body) }}
+              />
+            ) : (
+              <p className="mt-2 text-sm text-muted-foreground">{article.subtitle}</p>
+            )}
+            <span className="sr-only">{richTextToPlainText(article.body ?? article.subtitle)}</span>
           </div>
         </Link>
       ))}

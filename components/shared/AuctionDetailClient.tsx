@@ -1,12 +1,22 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronRight, Heart, Share2, Store } from "lucide-react";
+import {
+  Bell,
+  CheckCircle2,
+  ChevronRight,
+  Heart,
+  ShieldCheck,
+  Share2,
+  Store,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AppFooter } from "@/components/shared/AppFooter";
 import { NotificationBell } from "@/components/shared/NotificationBell";
 import { cn } from "@/lib/utils";
 import type { ViewerSummary } from "@/types/marketplace";
@@ -73,9 +83,7 @@ const money = (value: number) =>
     style: "currency",
     currency: "THB",
     maximumFractionDigits: 0,
-  })
-    .format(value / 100)
-    .replace("THB", "฿");
+  }).format(value / 100);
 
 const formatDateTime = (value: string) =>
   new Intl.DateTimeFormat("th-TH", {
@@ -104,6 +112,17 @@ const AuctionDetailClient = ({ product: initialProduct, viewer }: AuctionDetailC
   const isGuest = viewer.role === "GUEST";
   const remaining = useMemo(() => getRemaining(product.auctionEndsAt, now), [now, product.auctionEndsAt]);
   const topBid = product.bids[0];
+
+  const infoRows = [
+    ["ชื่อ", product.title],
+    ["การ์ดเกม", "One Piece Card Game (Japanese)"],
+    ["ชุด", product.setName],
+    ["รหัสชุด", product.setCode],
+    ["รหัสการ์ด", product.cardCode],
+    ["ระดับ", product.rarity],
+    ["สภาพสินค้า", product.conditionLabel],
+    ["ร้านค้า", product.sellerShop.name],
+  ];
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -183,15 +202,15 @@ const AuctionDetailClient = ({ product: initialProduct, viewer }: AuctionDetailC
       bids: [newBid, ...current.bids.map((bid) => (bid.status === "WINNING" ? { ...bid, status: "OUTBID" } : bid))],
     }));
     setBidAmount(String(Math.round((result.product.nextBidCents ?? amountCents) / 100)));
-    setNotice("เสนอราคาสำเร็จ คุณเป็นผู้เสนอราคาสูงสุดในตอนนี้");
+    setNotice("เสนอราคาสำเร็จ ตอนนี้คุณเป็นผู้เสนอราคาสูงสุด");
   };
 
   return (
-    <div className="min-h-screen bg-[#f6f6f2] text-foreground">
-      <header className="sticky top-0 z-40 border-b bg-background/90 px-4 py-3 backdrop-blur">
+    <div className="min-h-screen bg-[#f7f5ee] text-slate-950">
+      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex size-10 rotate-[-8deg] items-center justify-center rounded-md bg-primary text-primary-foreground">★</div>
+            <div className="flex size-10 rotate-[-8deg] items-center justify-center rounded-md bg-primary text-primary-foreground">*</div>
             <strong className="text-xl">BidCard TH</strong>
           </Link>
           <nav className="hidden items-center gap-2 md:flex">
@@ -213,64 +232,90 @@ const AuctionDetailClient = ({ product: initialProduct, viewer }: AuctionDetailC
         <div className="mb-6 flex items-center justify-between gap-3">
           <div>
             <Badge>Live Auction</Badge>
-            <h1 className="mt-3 text-4xl font-black">{product.title}</h1>
+            <h1 className="mt-3 text-4xl font-black leading-tight md:text-5xl">{product.title}</h1>
+            <p className="mt-2 text-sm text-slate-600">{product.cardCode} · {product.setName} · {product.conditionLabel}</p>
           </div>
           <Button type="button" variant="outline" size="icon" aria-label="แชร์">
             <Share2 className="size-4" />
           </Button>
         </div>
 
-        <section className="grid gap-8 lg:grid-cols-[minmax(0,600px)_minmax(0,1fr)_420px]">
-          <div className="rounded-2xl bg-muted p-5">
-            <div className="product-art relative mx-auto aspect-[100/140] max-h-[620px] overflow-hidden rounded-xl bg-background">
-              {product.imageUrl ? <Image src={product.imageUrl} alt={product.title} fill sizes="(min-width: 1024px) 560px, 100vw" className="object-contain" priority /> : null}
+        <section className="grid gap-8 lg:grid-cols-[minmax(0,760px)_420px]">
+          <div className="min-w-0 space-y-6">
+            <div className="rounded-[28px] bg-white p-5 shadow-[0_24px_80px_rgba(15,23,42,.10)]">
+              <div className="relative mx-auto aspect-[100/140] max-h-[720px] overflow-hidden rounded-2xl bg-slate-100">
+                {product.imageUrl ? (
+                  <Image src={product.imageUrl} alt={product.title} fill sizes="(min-width: 1024px) 720px, 100vw" className="object-contain" priority />
+                ) : null}
+              </div>
             </div>
+
+            <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-2xl font-black">รายละเอียดการ์ด</h2>
+                  <p className="text-sm text-slate-500">ข้อมูลจากร้านค้าและคลังการ์ดที่ใช้ลงประมูล</p>
+                </div>
+                <Badge variant="outline">{product.rarity}</Badge>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {infoRows.map(([label, value]) => (
+                  <div key={label} className="rounded-2xl bg-slate-50 p-4">
+                    <span className="text-xs font-semibold text-slate-500">{label}</span>
+                    <strong className="mt-1 block leading-6">{value}</strong>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-5 text-sm leading-7 text-slate-600">
+                {product.description ?? "ข้อมูลตัวอย่างสำหรับทดสอบระบบประมูล ตรวจสอบรูปสินค้าและรายละเอียดก่อนเสนอราคา"}
+              </p>
+            </section>
           </div>
 
-          <section className="space-y-4">
-            <InfoRow label="ชื่อ" value={product.title} />
-            <InfoRow label="การ์ดเกม" value="One Piece Card Game (Japanese)" />
-            <InfoRow label="ชุด" value={product.setName} />
-            <InfoRow label="รหัสชุด" value={product.setCode} />
-            <InfoRow label="รหัสการ์ด" value={product.cardCode} />
-            <InfoRow label="ระดับ" value={product.rarity} />
-            <InfoRow label="สภาพสินค้า" value={product.conditionLabel} />
-            <InfoRow label="ร้านค้า" value={product.sellerShop.name} />
-            <p className="pt-3 text-sm leading-7 text-muted-foreground">{product.description ?? "การ์ดพร้อมเข้าร่วมประมูล ตรวจสอบรูปและรายละเอียดก่อนเสนอราคา"}</p>
-          </section>
-
-          <aside className="h-fit rounded-2xl border bg-background p-5 shadow-sm">
-            <Link href={`/shops/${product.sellerShop.slug}`} className="mb-5 flex items-center justify-between rounded-xl bg-muted p-3">
+          <aside className="h-fit rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_24px_80px_rgba(15,23,42,.10)] lg:sticky lg:top-24">
+            <Link href={`/shops/${product.sellerShop.slug}`} className="mb-5 flex items-center justify-between rounded-2xl bg-slate-50 p-4 transition hover:bg-slate-100">
               <span className="inline-flex items-center gap-2"><Store className="size-4" />ขายโดย: {product.sellerShop.name}</span>
               <ChevronRight className="size-4" />
             </Link>
-            <div className="rounded-2xl bg-muted p-5 text-center">
-              <span className="text-sm text-muted-foreground">ราคาปัจจุบัน</span>
-              <strong className="block text-3xl text-primary">{topBid ? money(product.currentPriceCents) : "ยังไม่มีผู้เข้าร่วมประมูล"}</strong>
+            <div className="rounded-3xl bg-slate-950 p-5 text-center text-white">
+              <span className="text-sm text-slate-300">ราคาปัจจุบัน</span>
+              <strong className="mt-2 block text-3xl text-primary">{topBid ? money(product.currentPriceCents) : "ยังไม่มีผู้เข้าร่วมประมูล"}</strong>
             </div>
             <CountdownPill remaining={remaining} />
-            <p className="mt-3 text-center text-xs text-muted-foreground">
-              เงื่อนไข: หากมี bid ในช่วง 15 วินาทีสุดท้าย ระบบจะต่อเวลาอีก 15 วินาทีอัตโนมัติ หากไม่มีคนบิดต่อ ผู้เสนอราคาคนล่าสุดจะชนะเมื่อหมดเวลา
+            <p className="mt-3 text-center text-xs leading-6 text-slate-500">
+              หากมี bid ในช่วง 15 วินาทีสุดท้าย ระบบจะต่อเวลาอีก 15 วินาทีอัตโนมัติ ถ้าไม่มีคนบิดต่อ ผู้เสนอราคาล่าสุดจะชนะเมื่อหมดเวลา
             </p>
             <div className="mt-5 grid gap-3">
               <label className="text-sm font-semibold" htmlFor="bidAmount">ใส่ราคาประมูลของคุณ</label>
-              <Input id="bidAmount" type="number" min={Math.round(product.nextBidCents / 100)} value={bidAmount} onChange={(event) => setBidAmount(event.target.value)} placeholder={`ยอดขั้นต่ำ ${money(product.nextBidCents)}`} />
-              <Button type="button" onClick={submitBid}>บิด</Button>
+              <Input
+                id="bidAmount"
+                type="number"
+                min={Math.round(product.nextBidCents / 100)}
+                value={bidAmount}
+                onChange={(event) => setBidAmount(event.target.value)}
+                placeholder={`ยอดขั้นต่ำ ${money(product.nextBidCents)}`}
+              />
+              <Button type="button" className="h-11" onClick={submitBid}>บิด</Button>
               <Button type="button" variant="outline" className={cn(favorite && "border-primary text-primary")} onClick={toggleFavorite}>
                 <Heart className={cn("size-4", favorite && "fill-current")} data-icon="inline-start" />
                 {favorite ? "ติดตามอยู่" : "เพิ่มรายการโปรด"}
               </Button>
-              <p className="text-sm text-muted-foreground">{notice}</p>
+              <p className="rounded-2xl bg-slate-50 p-3 text-sm leading-6 text-slate-600">{notice}</p>
+            </div>
+            <div className="mt-5 grid gap-3 text-sm">
+              <TrustRow icon={<Bell className="size-4" />} text="แจ้งเตือนเมื่อมีคนบิดทับและช่วง 5 นาทีสุดท้าย" />
+              <TrustRow icon={<ShieldCheck className="size-4" />} text="ผู้ชนะต้องชำระเงินภายใน 24 ชั่วโมง" />
+              <TrustRow icon={<CheckCircle2 className="size-4" />} text="ร้านค้าต้องจัดส่งภายใน SLA หลังชำระเงิน" />
             </div>
           </aside>
         </section>
 
         <section className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
-          <div className="rounded-2xl border bg-background p-5 shadow-sm">
-            <h2 className="text-2xl font-bold">ประวัติการประมูล</h2>
-            <div className="mt-5 overflow-hidden rounded-xl border">
+          <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="text-2xl font-black">ประวัติการประมูล</h2>
+            <div className="mt-5 overflow-hidden rounded-2xl border">
               <table className="w-full text-left text-sm">
-                <thead className="bg-muted">
+                <thead className="bg-slate-50">
                   <tr>
                     <th className="p-3">ผู้ร่วมประมูล</th>
                     <th className="p-3">ราคาที่ประมูล</th>
@@ -279,13 +324,13 @@ const AuctionDetailClient = ({ product: initialProduct, viewer }: AuctionDetailC
                 </thead>
                 <tbody>
                   {product.bids.length === 0 ? (
-                    <tr><td className="p-6 text-center text-muted-foreground" colSpan={3}>ยังไม่มีประวัติการประมูล</td></tr>
+                    <tr><td className="p-6 text-center text-slate-500" colSpan={3}>ยังไม่มีประวัติการประมูล</td></tr>
                   ) : (
                     product.bids.map((bid) => (
                       <tr key={bid.id} className="border-t">
                         <td className="p-3 font-medium">{bid.bidderName}</td>
                         <td className="p-3 text-primary">{money(bid.amountCents)}</td>
-                        <td className="p-3 text-muted-foreground">{formatDateTime(bid.createdAt)}</td>
+                        <td className="p-3 text-slate-500">{formatDateTime(bid.createdAt)}</td>
                       </tr>
                     ))
                   )}
@@ -293,9 +338,9 @@ const AuctionDetailClient = ({ product: initialProduct, viewer }: AuctionDetailC
               </table>
             </div>
           </div>
-          <div className="rounded-2xl border bg-background p-5 shadow-sm">
+          <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold">สรุปการขาย</h2>
+              <h2 className="text-2xl font-black">สรุปการขาย</h2>
               <span className="text-sm font-semibold text-primary">ราคาเปิด {money(product.openingPriceCents)}</span>
             </div>
             <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
@@ -305,16 +350,11 @@ const AuctionDetailClient = ({ product: initialProduct, viewer }: AuctionDetailC
           </div>
         </section>
       </main>
+
+      <AppFooter />
     </div>
   );
 };
-
-const InfoRow = ({ label, value }: { label: string; value: string }) => (
-  <div className="grid grid-cols-[96px_minmax(0,1fr)] gap-3 text-sm">
-    <strong>{label}:</strong>
-    <span className="text-muted-foreground">{value}</span>
-  </div>
-);
 
 const CountdownPill = ({ remaining }: { remaining: ReturnType<typeof getRemaining> }) => (
   <div className="mt-5 grid grid-cols-4 rounded-full bg-[#191919] px-3 py-3 text-center text-white">
@@ -332,10 +372,17 @@ const CountdownPill = ({ remaining }: { remaining: ReturnType<typeof getRemainin
   </div>
 );
 
+const TrustRow = ({ icon, text }: { icon: ReactNode; text: string }) => (
+  <span className="inline-flex items-start gap-2 rounded-2xl bg-slate-50 p-3 text-slate-600">
+    <span className="mt-0.5 text-primary">{icon}</span>
+    {text}
+  </span>
+);
+
 const Metric = ({ label, value }: { label: string; value: string }) => (
-  <span className="rounded-xl bg-muted p-3">
+  <span className="rounded-2xl bg-slate-50 p-4">
     <strong className="block text-lg">{value}</strong>
-    <span className="text-muted-foreground">{label}</span>
+    <span className="text-slate-500">{label}</span>
   </span>
 );
 
