@@ -2,7 +2,7 @@ import "dotenv/config";
 import mariadb from "mariadb";
 import { hash } from "bcryptjs";
 
-const databaseUrl = process.env.DATABASE_URL ?? "mysql://root:password@127.0.0.1:3306/pamoon";
+const databaseUrl = process.env.DATABASE_URL ?? "mysql://root@127.0.0.1:3306/pamoon";
 
 const parseMariaDbUrl = (url) => {
   const parsed = new URL(url);

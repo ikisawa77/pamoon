@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
-const databaseUrl = process.env.DATABASE_URL ?? "mysql://root:password@localhost:3306/pamoon";
+const databaseUrl = process.env.DATABASE_URL ?? "mysql://root@127.0.0.1:3306/pamoon";
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
@@ -13,4 +13,3 @@ export default defineConfig({
     url: databaseUrl,
   },
 });
-

@@ -12,19 +12,34 @@ Write-Host ""
 $connections = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
 if (-not $connections) {
   Write-Host "[INFO] No server is running at $Url" -ForegroundColor Yellow
-  exit 0
+} else {
+  $idsToStop = $connections | Select-Object -ExpandProperty OwningProcess -Unique
+  foreach ($idToStop in $idsToStop) {
+    try {
+      $targetProcess = Get-Process -Id $idToStop -ErrorAction Stop
+      Write-Host "[STOP] $($targetProcess.ProcessName) PID $idToStop"
+      Stop-Process -Id $idToStop -Force
+    } catch {
+      Write-Host "[SKIP] Could not stop PID $idToStop" -ForegroundColor Yellow
+    }
+  }
+
+  Write-Host "[OK] Localhost server stopped." -ForegroundColor Green
 }
 
-$idsToStop = $connections | Select-Object -ExpandProperty OwningProcess -Unique
-foreach ($idToStop in $idsToStop) {
+$mysqlProcesses = Get-CimInstance Win32_Process | Where-Object {
+  $_.Name -eq "mysqld.exe" -and $_.CommandLine -like "*C:\xampp*"
+}
+
+foreach ($mysqlProcess in $mysqlProcesses) {
   try {
-    $targetProcess = Get-Process -Id $idToStop -ErrorAction Stop
-    Write-Host "[STOP] $($targetProcess.ProcessName) PID $idToStop"
-    Stop-Process -Id $idToStop -Force
+    Write-Host "[STOP] XAMPP MySQL PID $($mysqlProcess.ProcessId)"
+    Stop-Process -Id $mysqlProcess.ProcessId -Force
   } catch {
-    Write-Host "[SKIP] Could not stop PID $idToStop" -ForegroundColor Yellow
+    Write-Host "[SKIP] Could not stop XAMPP MySQL PID $($mysqlProcess.ProcessId)" -ForegroundColor Yellow
   }
 }
 
-Write-Host "[OK] Localhost server stopped." -ForegroundColor Green
-
+if ($mysqlProcesses) {
+  Write-Host "[OK] XAMPP MySQL stopped." -ForegroundColor Green
+}

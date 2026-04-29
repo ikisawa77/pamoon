@@ -1,7 +1,7 @@
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import { PrismaClient } from "@/lib/generated/prisma/client";
 
-const defaultDatabaseUrl = "mysql://root:password@127.0.0.1:3306/pamoon";
+const defaultDatabaseUrl = "mysql://root@127.0.0.1:3306/pamoon";
 
 const parseMariaDbUrl = (databaseUrl: string) => {
   const parsed = new URL(databaseUrl);
