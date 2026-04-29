@@ -147,6 +147,13 @@ enum EmailNotificationStatus {
   SKIPPED
 }
 
+enum EmailTemplateType {
+  AUCTION_INTEREST
+  BID_OUTBID
+  AUCTION_WON
+  PAYMENT_DUE
+}
+
 enum AuditActionType {
   PRODUCT_STATUS_CHANGED
   USER_STATUS_CHANGED
@@ -156,6 +163,7 @@ enum AuditActionType {
   SLA_RUN
   EMAIL_FLUSH
   CARD_SET_UPDATED
+  EMAIL_TEMPLATE_UPDATED
 }
 
 model User {
@@ -481,6 +489,23 @@ model EmailNotification {
 
   @@index([recipientId, status])
   @@index([status, createdAt])
+}
+
+model EmailTemplate {
+  id          String            @id @default(cuid())
+  type        EmailTemplateType @unique
+  name        String            @db.VarChar(120)
+  subject     String            @db.VarChar(180)
+  preheader   String?           @db.VarChar(255)
+  headline    String            @db.VarChar(160)
+  body        String            @db.Text
+  accentColor String            @default("#f5b800") @db.VarChar(20)
+  ctaLabel    String            @db.VarChar(80)
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([isActive])
 }
 
 model AdminAuditLog {

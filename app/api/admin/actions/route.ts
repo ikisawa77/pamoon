@@ -56,6 +56,17 @@ const actionSchema = z.discriminatedUnion("action", [
     sortOrder: z.coerce.number().int().min(0).max(999),
     isActive: z.boolean(),
   }),
+  z.object({
+    action: z.literal("update-email-template"),
+    templateId: z.string().min(1),
+    subject: z.string().trim().min(2).max(180),
+    preheader: z.string().trim().max(255),
+    headline: z.string().trim().min(2).max(160),
+    body: z.string().trim().min(2).max(3000),
+    accentColor: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/),
+    ctaLabel: z.string().trim().min(2).max(80),
+    isActive: z.boolean(),
+  }),
 ]);
 
 const audit = async (adminId: string, action: string, targetType: string, targetId: string, message: string) =>
@@ -202,6 +213,23 @@ export const POST = async (request: NextRequest) => {
       });
       await audit(admin.id, "CARD_SET_UPDATED", "CardSet", cardSet.id, `เพิ่มชุดการ์ด ${cardSet.label}`);
       return NextResponse.json({ ok: true, cardSet }, { status: 201 });
+    }
+
+    if (input.action === "update-email-template") {
+      const template = await prisma.emailTemplate.update({
+        where: { id: input.templateId },
+        data: {
+          subject: input.subject,
+          preheader: input.preheader || null,
+          headline: input.headline,
+          body: input.body,
+          accentColor: input.accentColor,
+          ctaLabel: input.ctaLabel,
+          isActive: input.isActive,
+        },
+      });
+      await audit(admin.id, "EMAIL_TEMPLATE_UPDATED", "EmailTemplate", template.id, `แก้ไขเทมเพลตอีเมล ${template.name}`);
+      return NextResponse.json({ ok: true, template });
     }
 
     const cardSet = await prisma.cardSet.update({

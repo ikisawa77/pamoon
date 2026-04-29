@@ -5,6 +5,24 @@ const getSmtpPort = () => Number(process.env.SMTP_PORT ?? 587);
 
 const hasSmtpConfig = () => Boolean(process.env.SMTP_HOST && process.env.SMTP_FROM);
 
+const isHtmlBody = (body: string) => /<\/?[a-z][\s\S]*>/i.test(body);
+
+const stripHtml = (body: string) =>
+  body
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;/g, "'")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
 export const flushPendingEmailNotifications = async (limit = 20) => {
   if (!hasSmtpConfig()) {
     const skipped = await prisma.emailNotification.updateMany({
@@ -25,12 +43,13 @@ export const flushPendingEmailNotifications = async (limit = 20) => {
     host: process.env.SMTP_HOST,
     port: getSmtpPort(),
     secure: getSmtpPort() === 465,
-    auth: process.env.SMTP_USER && process.env.SMTP_PASSWORD
-      ? {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASSWORD,
-        }
-      : undefined,
+    auth:
+      process.env.SMTP_USER && process.env.SMTP_PASSWORD
+        ? {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASSWORD,
+          }
+        : undefined,
   });
 
   let sent = 0;
@@ -38,11 +57,13 @@ export const flushPendingEmailNotifications = async (limit = 20) => {
 
   for (const email of emails) {
     try {
+      const html = isHtmlBody(email.body) ? email.body : undefined;
       await transporter.sendMail({
         from: process.env.SMTP_FROM,
         to: email.toEmail,
         subject: email.subject,
-        text: email.body,
+        text: html ? stripHtml(email.body) : email.body,
+        html,
       });
 
       await prisma.emailNotification.update({

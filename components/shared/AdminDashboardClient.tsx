@@ -117,6 +117,19 @@ interface EmailRow {
   createdAt: string;
 }
 
+interface EmailTemplateRow {
+  id: string;
+  type: string;
+  name: string;
+  subject: string;
+  preheader: string | null;
+  headline: string;
+  body: string;
+  accentColor: string;
+  ctaLabel: string;
+  isActive: boolean;
+}
+
 interface ModerationRow {
   id: string;
   type: string;
@@ -146,6 +159,7 @@ interface AdminDashboardClientProps {
   users: UserRow[];
   notifications: NotificationRow[];
   emails: EmailRow[];
+  emailTemplates: EmailTemplateRow[];
   moderationCases: ModerationRow[];
   auditLogs: AuditRow[];
 }
@@ -186,6 +200,7 @@ const AdminDashboardClient = ({
   users,
   notifications,
   emails,
+  emailTemplates,
   moderationCases,
   auditLogs,
 }: AdminDashboardClientProps) => {
@@ -194,6 +209,9 @@ const AdminDashboardClient = ({
   const [productQuery, setProductQuery] = useState("");
   const [setEdits, setSetEdits] = useState<Record<string, CardSetRow>>(() =>
     Object.fromEntries(cardSets.map((set) => [set.id, set])),
+  );
+  const [templateEdits, setTemplateEdits] = useState<Record<string, EmailTemplateRow>>(() =>
+    Object.fromEntries(emailTemplates.map((template) => [template.id, template])),
   );
 
   const filteredProducts = useMemo(() => {
@@ -234,6 +252,24 @@ const AdminDashboardClient = ({
         isActive: set.isActive,
       },
       "บันทึกชุดการ์ดแล้ว",
+    );
+  };
+
+  const saveEmailTemplate = (templateId: string) => {
+    const template = templateEdits[templateId];
+    void runAction(
+      {
+        action: "update-email-template",
+        templateId,
+        subject: template.subject,
+        preheader: template.preheader ?? "",
+        headline: template.headline,
+        body: template.body,
+        accentColor: template.accentColor,
+        ctaLabel: template.ctaLabel,
+        isActive: template.isActive,
+      },
+      "บันทึกเทมเพลตอีเมลแล้ว",
     );
   };
 
@@ -419,6 +455,111 @@ const AdminDashboardClient = ({
 
       {activeTab === "messages" ? (
         <div className="grid gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>ตั้งค่าเทมเพลตอีเมลแจ้งเตือน</CardTitle>
+              <CardDescription>แก้หัวข้อ เนื้อหา สี และปุ่มของอีเมล 4 รูปแบบหลัก: สินค้าที่สนใจ, ถูกบิดทับ, ชนะประมูล และชำระเงิน</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4">
+              {emailTemplates.map((template) => {
+                const edit = templateEdits[template.id];
+                return (
+                  <div key={template.id} className="grid gap-3 rounded-md border bg-background p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <Badge variant="outline">{template.type}</Badge>
+                        <h3 className="mt-2 font-semibold">{template.name}</h3>
+                      </div>
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={edit.isActive}
+                          onCheckedChange={(checked) =>
+                            setTemplateEdits((current) => ({
+                              ...current,
+                              [template.id]: { ...edit, isActive: checked === true },
+                            }))
+                          }
+                        />
+                        เปิดใช้งาน
+                      </label>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <Input
+                        value={edit.subject}
+                        onChange={(event) =>
+                          setTemplateEdits((current) => ({
+                            ...current,
+                            [template.id]: { ...edit, subject: event.target.value },
+                          }))
+                        }
+                        placeholder="หัวข้ออีเมล"
+                      />
+                      <Input
+                        value={edit.headline}
+                        onChange={(event) =>
+                          setTemplateEdits((current) => ({
+                            ...current,
+                            [template.id]: { ...edit, headline: event.target.value },
+                          }))
+                        }
+                        placeholder="หัวเรื่องในอีเมล"
+                      />
+                      <Input
+                        value={edit.preheader ?? ""}
+                        onChange={(event) =>
+                          setTemplateEdits((current) => ({
+                            ...current,
+                            [template.id]: { ...edit, preheader: event.target.value },
+                          }))
+                        }
+                        placeholder="ข้อความพรีวิวใน inbox"
+                      />
+                      <div className="grid grid-cols-[96px_minmax(0,1fr)] gap-2">
+                        <Input
+                          value={edit.accentColor}
+                          onChange={(event) =>
+                            setTemplateEdits((current) => ({
+                              ...current,
+                              [template.id]: { ...edit, accentColor: event.target.value },
+                            }))
+                          }
+                          placeholder="#22c55e"
+                        />
+                        <Input
+                          value={edit.ctaLabel}
+                          onChange={(event) =>
+                            setTemplateEdits((current) => ({
+                              ...current,
+                              [template.id]: { ...edit, ctaLabel: event.target.value },
+                            }))
+                          }
+                          placeholder="ข้อความปุ่ม"
+                        />
+                      </div>
+                    </div>
+                    <textarea
+                      value={edit.body}
+                      onChange={(event) =>
+                        setTemplateEdits((current) => ({
+                          ...current,
+                          [template.id]: { ...edit, body: event.target.value },
+                        }))
+                      }
+                      className="min-h-24 rounded-md border bg-background px-3 py-2 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                      placeholder="เนื้อหาอีเมล ใช้ตัวแปรได้ เช่น {{productTitle}}, {{currentPrice}}, {{timeLeft}}, {{paymentDue}}"
+                    />
+                    <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+                      <span>ตัวแปร: {"{{recipientName}} {{productTitle}} {{currentPrice}} {{timeLeft}} {{paymentDue}} {{sellerName}}"}</span>
+                      <Button type="button" size="sm" onClick={() => saveEmailTemplate(template.id)}>
+                        <Save data-icon="inline-start" />
+                        บันทึกเทมเพลต
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div><CardTitle>อีเมล Outbox</CardTitle><CardDescription>ตรวจสถานะอีเมลแจ้งเตือนและส่งค้างส่งแบบ manual</CardDescription></div>

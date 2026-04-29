@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiError, unknownError, validationError } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { prisma } from "@/lib/db/prisma";
+import { renderEmailTemplate } from "@/lib/email/templates";
 import { createBidApiSchema } from "@/lib/schemas";
 
 export const runtime = "nodejs";
@@ -49,9 +50,7 @@ export const POST = async (request: NextRequest) => {
             },
           },
           bids: {
-            where: {
-              status: "WINNING",
-            },
+            where: { status: "WINNING" },
             orderBy: { amountCents: "desc" },
             include: {
               bidder: {
@@ -158,6 +157,31 @@ export const POST = async (request: NextRequest) => {
       });
 
       if (previousWinnerIds.length > 0) {
+        const outbidEmails = await Promise.all(
+          previousWinnersToNotify.map(async (previousBid) => {
+            const rendered = await renderEmailTemplate(
+              "BID_OUTBID",
+              {
+                recipientName: previousBid.bidder.displayName,
+                productTitle: updatedProduct.title,
+                productHref: `/auctions/${updatedProduct.id}`,
+                currentPrice: `${money(input.amountCents)} บาท`,
+                timeLeft: updatedProduct.auctionEndsAt?.toLocaleString("th-TH") ?? "รอประกาศ",
+                sellerName: product.sellerShop.name,
+              },
+              tx,
+            );
+
+            return {
+              recipientId: previousBid.bidder.id,
+              toEmail: previousBid.bidder.email,
+              subject: rendered.subject,
+              body: rendered.html,
+              status: "PENDING" as const,
+            };
+          }),
+        );
+
         await tx.notification.createMany({
           data: previousWinnerIds.map((recipientId) => ({
             recipientId,
@@ -171,15 +195,7 @@ export const POST = async (request: NextRequest) => {
           })),
         });
 
-        await tx.emailNotification.createMany({
-          data: previousWinnersToNotify.map((previousBid) => ({
-            recipientId: previousBid.bidder.id,
-            toEmail: previousBid.bidder.email,
-            subject: `คุณถูกประมูลทับ: ${updatedProduct.title}`,
-            body: `มีผู้เสนอราคา ${money(input.amountCents)} บาทในรายการ ${updatedProduct.title} หากยังสนใจ กรุณาเข้าไปเสนอราคาใหม่`,
-            status: "PENDING" as const,
-          })),
-        });
+        await tx.emailNotification.createMany({ data: outbidEmails });
       }
 
       if (auctionExtended) {

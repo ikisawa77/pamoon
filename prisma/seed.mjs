@@ -74,6 +74,48 @@ const cardNames = [
 ];
 const rarityPriceBase = { C: 80, UC: 150, R: 320, L: 750, SR: 1600, SEC: 3600, SP: 6200, P: 9800 };
 const dataCardSetNames = new Map(sets.map((set) => [set.code, set.name]));
+const emailTemplates = [
+  {
+    type: "AUCTION_INTEREST",
+    name: "มีการประมูลสินค้าที่สนใจ",
+    subject: "มีการประมูลสินค้าที่คุณสนใจ!",
+    preheader: "รายการที่คุณติดตามกำลังเปิดประมูลแล้ว",
+    headline: "มีผู้เปิดประมูลสินค้าที่คุณสนใจ",
+    body: "รายการ {{productTitle}} ที่คุณติดตามกำลังเปิดรับบิดแล้ว ตรวจรายละเอียดและเข้าร่วมก่อนหมดเวลา",
+    accentColor: "#facc15",
+    ctaLabel: "เข้าร่วมประมูลเลย",
+  },
+  {
+    type: "BID_OUTBID",
+    name: "มีผู้บิดสูงกว่า",
+    subject: "มีผู้บิดสูงกว่าคุณ!",
+    preheader: "รีบกลับไปบิดเพิ่ม ถ้ายังต้องการชนะรายการนี้",
+    headline: "มีการบิดใหม่",
+    body: "ขณะนี้มีผู้เสนอราคาสูงกว่าคุณในรายการ {{productTitle}} ราคาปัจจุบันคือ {{currentPrice}}",
+    accentColor: "#ef4444",
+    ctaLabel: "บิดต่อเลย",
+  },
+  {
+    type: "AUCTION_WON",
+    name: "ชนะการประมูล",
+    subject: "ยินดีด้วย คุณชนะการประมูล",
+    preheader: "กรุณาชำระเงินภายใน 24 ชั่วโมงเพื่อยืนยันสิทธิ์",
+    headline: "ยินดีด้วย! คุณชนะแล้ว",
+    body: "คุณชนะการประมูล {{productTitle}} ยอดสุทธิ {{totalPrice}} กรุณาชำระเงินภายใน {{paymentDue}}",
+    accentColor: "#22c55e",
+    ctaLabel: "ชำระเงินเดี๋ยวนี้",
+  },
+  {
+    type: "PAYMENT_DUE",
+    name: "แจ้งเตือนชำระเงิน",
+    subject: "ชำระเงินภายใน 24 ชั่วโมง",
+    preheader: "รายการประมูลที่ชนะกำลังรอชำระเงิน",
+    headline: "เหลือเวลาชำระเงิน",
+    body: "รายการ {{productTitle}} ต้องชำระเงินภายใน {{paymentDue}} หากพ้นกำหนดระบบจะส่งเข้าแอดมินตรวจสอบ",
+    accentColor: "#dc2626",
+    ctaLabel: "ไปหน้าคำสั่งซื้อ",
+  },
+];
 
 const id = (prefix, index) => `seed_${prefix}_${String(index).padStart(3, "0")}`;
 const getRequiredEnv = (key) => {
@@ -195,8 +237,18 @@ const main = async () => {
 
   await connection.beginTransaction();
   try {
-    for (const table of ["AdminAuditLog", "EmailNotification", "FavoriteProduct", "ChatMessage", "ChatThread", "ModerationCase", "Notification", "Order", "Bid", "WalletTransaction", "HomeContent", "Product", "CardSet", "CardGame", "Shop", "User"]) {
+    for (const table of ["AdminAuditLog", "EmailNotification", "EmailTemplate", "FavoriteProduct", "ChatMessage", "ChatThread", "ModerationCase", "Notification", "Order", "Bid", "WalletTransaction", "HomeContent", "Product", "CardSet", "CardGame", "Shop", "User"]) {
       await connection.query(`DELETE FROM \`${table}\``);
+    }
+
+    for (const [index, template] of emailTemplates.entries()) {
+      await insert(connection, "EmailTemplate", {
+        id: id("email_template", index + 1),
+        ...template,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      });
     }
 
     await insert(connection, "CardGame", {

@@ -32,6 +32,7 @@ const AdminPage = async () => {
     users,
     notifications,
     emails,
+    emailTemplates,
     moderationCases,
     auditLogs,
   ] = await Promise.all([
@@ -88,6 +89,9 @@ const AdminPage = async () => {
     prisma.emailNotification.findMany({
       orderBy: [{ createdAt: "desc" }],
       take: 80,
+    }),
+    prisma.emailTemplate.findMany({
+      orderBy: [{ type: "asc" }],
     }),
     prisma.moderationCase.findMany({
       orderBy: [{ createdAt: "desc" }],
@@ -226,6 +230,18 @@ const AdminPage = async () => {
           status: email.status,
           reason: email.reason,
           createdAt: email.createdAt.toISOString(),
+        }))}
+        emailTemplates={emailTemplates.map((template) => ({
+          id: template.id,
+          type: template.type,
+          name: template.name,
+          subject: template.subject,
+          preheader: template.preheader,
+          headline: template.headline,
+          body: template.body,
+          accentColor: template.accentColor,
+          ctaLabel: template.ctaLabel,
+          isActive: template.isActive,
         }))}
         moderationCases={moderationCases.map((moderationCase) => ({
           id: moderationCase.id,

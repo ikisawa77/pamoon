@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
+import { renderEmailTemplate } from "@/lib/email/templates";
 
 const HOUR_MS = 60 * 60 * 1000;
 const PAYMENT_WINDOW_MS = 24 * HOUR_MS;
@@ -565,6 +566,54 @@ export const runMarketplaceSlaProcessor = async (now = new Date()) => {
             productId: product.id,
             orderId: order.id,
             bidId: winningBid.id,
+          },
+        ],
+      });
+
+      const auctionWonEmail = await renderEmailTemplate(
+        "AUCTION_WON",
+        {
+          recipientName: winningBid.bidder.displayName,
+          productTitle: product.title,
+          productHref: "/account/orders",
+          currentPrice: `${Math.round(winningBid.amountCents / 100).toLocaleString("th-TH")} บาท`,
+          totalPrice: `${Math.round(winningBid.amountCents / 100).toLocaleString("th-TH")} บาท`,
+          paymentDue: order.paymentDueAt?.toLocaleString("th-TH") ?? "24 ชั่วโมง",
+          timeLeft: "24 ชั่วโมง",
+          sellerName: product.sellerShop.name,
+        },
+        tx,
+      );
+      const paymentDueEmail = await renderEmailTemplate(
+        "PAYMENT_DUE",
+        {
+          recipientName: winningBid.bidder.displayName,
+          productTitle: product.title,
+          productHref: "/account/orders",
+          currentPrice: `${Math.round(winningBid.amountCents / 100).toLocaleString("th-TH")} บาท`,
+          totalPrice: `${Math.round(winningBid.amountCents / 100).toLocaleString("th-TH")} บาท`,
+          paymentDue: order.paymentDueAt?.toLocaleString("th-TH") ?? "24 ชั่วโมง",
+          timeLeft: "24 ชั่วโมง",
+          sellerName: product.sellerShop.name,
+        },
+        tx,
+      );
+
+      await tx.emailNotification.createMany({
+        data: [
+          {
+            recipientId: winningBid.bidderId,
+            toEmail: winningBid.bidder.email,
+            subject: auctionWonEmail.subject,
+            body: auctionWonEmail.html,
+            status: "PENDING" as const,
+          },
+          {
+            recipientId: winningBid.bidderId,
+            toEmail: winningBid.bidder.email,
+            subject: paymentDueEmail.subject,
+            body: paymentDueEmail.html,
+            status: "PENDING" as const,
           },
         ],
       });
