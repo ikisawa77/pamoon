@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { apiError, unknownError, validationError } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { CARD_GAME_NAME, getCardSetDefinition } from "@/lib/card-catalog";
+import { CARD_GAME_NAME } from "@/lib/card-catalog";
+import { getCardSetDefinitionFromDb } from "@/lib/card-catalog.server";
 import { createProductApiSchema } from "@/lib/schemas";
 import type { ListingMode, ProductCategory, ProductRarity } from "@/types/marketplace";
 
@@ -80,7 +81,7 @@ export const POST = async (request: NextRequest) => {
     }
 
     const input = parsed.data;
-    const cardSet = getCardSetDefinition(input.category);
+    const cardSet = await getCardSetDefinitionFromDb(input.category);
     const sellerShop = await prisma.shop.findFirst({
       where: {
         ownerId: user.id,

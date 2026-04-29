@@ -147,6 +147,17 @@ enum EmailNotificationStatus {
   SKIPPED
 }
 
+enum AuditActionType {
+  PRODUCT_STATUS_CHANGED
+  USER_STATUS_CHANGED
+  SHOP_STATUS_CHANGED
+  MODERATION_RESOLVED
+  REFUND_MARKED
+  SLA_RUN
+  EMAIL_FLUSH
+  CARD_SET_UPDATED
+}
+
 model User {
   id                 String              @id @default(cuid())
   email              String              @unique @db.VarChar(191)
@@ -229,6 +240,34 @@ model Product {
   @@index([category])
   @@index([rarity])
   @@index([auctionEndsAt])
+}
+
+model CardGame {
+  id        String    @id @default(cuid())
+  name      String    @unique @db.VarChar(120)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  sets      CardSet[]
+
+  @@index([isActive])
+}
+
+model CardSet {
+  id        String   @id @default(cuid())
+  gameId    String
+  category  ProductCategory @unique
+  setCode   String   @unique @db.VarChar(40)
+  setName   String   @db.VarChar(120)
+  label     String   @db.VarChar(160)
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  game      CardGame @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@index([gameId, isActive, sortOrder])
+  @@index([isActive])
 }
 
 model Bid {
@@ -442,4 +481,18 @@ model EmailNotification {
 
   @@index([recipientId, status])
   @@index([status, createdAt])
+}
+
+model AdminAuditLog {
+  id        String          @id @default(cuid())
+  adminId   String?
+  action    AuditActionType
+  targetType String         @db.VarChar(60)
+  targetId   String         @db.VarChar(191)
+  message    String         @db.VarChar(500)
+  createdAt DateTime        @default(now())
+
+  @@index([adminId, createdAt])
+  @@index([action, createdAt])
+  @@index([targetType, targetId])
 }

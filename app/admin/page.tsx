@@ -1,29 +1,10 @@
 import { redirect } from "next/navigation";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { AdminHomeContentManager } from "@/components/shared/AdminHomeContentManager";
+import { AdminDashboardClient } from "@/components/shared/AdminDashboardClient";
 import { LogoutButton } from "@/components/shared/LogoutButton";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { prisma } from "@/lib/db/prisma";
 
-const moneyFromCents = (value: number) =>
-  new Intl.NumberFormat("th-TH", {
-    style: "currency",
-    currency: "THB",
-    maximumFractionDigits: 0,
-  })
-    .format(value / 100)
-    .replace("THB", "฿");
-
-const statusLabel: Record<string, string> = {
-  ACTIVE: "ใช้งานอยู่",
-  PENDING: "รอตรวจ",
-  APPROVED: "อนุมัติแล้ว",
-  SOLD: "ขายแล้ว",
-  ENDED: "จบแล้ว",
-  REMOVED: "ถอดออก",
-  DRAFT: "แบบร่าง",
-};
+export const dynamic = "force-dynamic";
 
 const AdminPage = async () => {
   const user = await getCurrentUser();
@@ -43,12 +24,16 @@ const AdminPage = async () => {
     auctionCount,
     orderCount,
     walletCount,
-    latestShops,
-    latestProducts,
-    latestTransactions,
-    moderationCases,
-    refundPendingOrders,
     homeContents,
+    cardSets,
+    products,
+    orders,
+    shops,
+    users,
+    notifications,
+    emails,
+    moderationCases,
+    auditLogs,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.shop.count(),
@@ -56,76 +41,86 @@ const AdminPage = async () => {
     prisma.product.count({ where: { mode: "AUCTION" } }),
     prisma.order.count(),
     prisma.walletTransaction.count(),
-    prisma.shop.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 5,
+    prisma.homeContent.findMany({ orderBy: [{ type: "asc" }, { sortOrder: "asc" }] }),
+    prisma.cardSet.findMany({
+      orderBy: [{ sortOrder: "asc" }, { setCode: "asc" }],
       include: {
-        owner: {
-          select: {
-            email: true,
-          },
-        },
-        _count: {
-          select: {
-            products: true,
-          },
-        },
+        game: { select: { name: true } },
       },
     }),
     prisma.product.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 8,
+      orderBy: [{ createdAt: "desc" }],
+      take: 120,
       include: {
-        sellerShop: {
-          select: {
-            name: true,
-          },
-        },
-      },
-    }),
-    prisma.walletTransaction.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 6,
-      include: {
-        user: {
-          select: {
-            email: true,
-          },
-        },
-      },
-    }),
-    prisma.moderationCase.findMany({
-      where: { status: "OPEN" },
-      orderBy: { createdAt: "desc" },
-      take: 8,
-      include: {
-        user: { select: { email: true, displayName: true, status: true } },
-        shop: { select: { name: true, status: true } },
-        order: { include: { product: { select: { title: true } } } },
+        sellerShop: { select: { name: true } },
+        _count: { select: { bids: true, favorites: true } },
       },
     }),
     prisma.order.findMany({
-      where: { status: { in: ["REFUND_PENDING", "PAYMENT_EXPIRED"] } },
-      orderBy: { updatedAt: "desc" },
-      take: 6,
+      orderBy: [{ updatedAt: "desc" }],
+      take: 80,
       include: {
-        buyer: { select: { email: true, status: true } },
-        sellerShop: { select: { name: true, status: true } },
+        buyer: { select: { email: true } },
+        sellerShop: { select: { name: true } },
         product: { select: { title: true } },
       },
     }),
-    prisma.homeContent.findMany({
-      orderBy: [{ type: "asc" }, { sortOrder: "asc" }],
+    prisma.shop.findMany({
+      orderBy: [{ updatedAt: "desc" }],
+      take: 60,
+      include: {
+        owner: { select: { email: true } },
+        _count: { select: { products: true, orders: true, moderationCases: true } },
+      },
+    }),
+    prisma.user.findMany({
+      orderBy: [{ updatedAt: "desc" }],
+      take: 80,
+      include: {
+        _count: { select: { orders: true, bids: true } },
+      },
+    }),
+    prisma.notification.findMany({
+      orderBy: [{ createdAt: "desc" }],
+      take: 80,
+      include: { recipient: { select: { email: true } } },
+    }),
+    prisma.emailNotification.findMany({
+      orderBy: [{ createdAt: "desc" }],
+      take: 80,
+    }),
+    prisma.moderationCase.findMany({
+      orderBy: [{ createdAt: "desc" }],
+      take: 60,
+      include: {
+        user: { select: { email: true } },
+        shop: { select: { name: true } },
+        order: { include: { product: { select: { title: true } } } },
+      },
+    }),
+    prisma.adminAuditLog.findMany({
+      orderBy: [{ createdAt: "desc" }],
+      take: 60,
     }),
   ]);
 
-  const statCards = [
-    { label: "สมาชิก", value: userCount.toLocaleString("th-TH"), detail: "บัญชีทั้งหมด" },
-    { label: "ร้านค้า", value: shopCount.toLocaleString("th-TH"), detail: "ร้านที่สมัครแล้ว" },
-    { label: "สินค้า", value: productCount.toLocaleString("th-TH"), detail: "รวมซื้อเลยและประมูล" },
+  const productCountsBySet = new Map<string, { productCount: number; auctionCount: number; buyCount: number }>();
+  for (const product of products) {
+    const key = product.category;
+    const current = productCountsBySet.get(key) ?? { productCount: 0, auctionCount: 0, buyCount: 0 };
+    current.productCount += 1;
+    if (product.mode === "AUCTION") current.auctionCount += 1;
+    if (product.mode === "BUY") current.buyCount += 1;
+    productCountsBySet.set(key, current);
+  }
+
+  const stats = [
+    { label: "สมาชิก", value: userCount.toLocaleString("th-TH"), detail: "บัญชีทั้งหมดในระบบ" },
+    { label: "ร้านค้า", value: shopCount.toLocaleString("th-TH"), detail: "ร้านที่สมัครและร้านทดสอบ" },
+    { label: "สินค้า", value: productCount.toLocaleString("th-TH"), detail: "รวมประมูลและซื้อเลย" },
     { label: "ประมูล", value: auctionCount.toLocaleString("th-TH"), detail: "รายการประมูลทั้งหมด" },
-    { label: "คำสั่งซื้อ", value: orderCount.toLocaleString("th-TH"), detail: "ออเดอร์ในระบบ" },
-    { label: "ธุรกรรมเงิน", value: walletCount.toLocaleString("th-TH"), detail: "รายการกระเป๋าเงิน" },
+    { label: "คำสั่งซื้อ", value: orderCount.toLocaleString("th-TH"), detail: "order ในระบบ" },
+    { label: "ธุรกรรมเงิน", value: walletCount.toLocaleString("th-TH"), detail: "wallet transaction" },
   ];
 
   return (
@@ -140,172 +135,116 @@ const AdminPage = async () => {
           <LogoutButton />
         </div>
       </header>
-
-      <section className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6">
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-          {statCards.map((card) => (
-            <Card key={card.label}>
-              <CardHeader className="pb-2">
-                <CardDescription>{card.label}</CardDescription>
-                <CardTitle className="text-2xl">{card.value}</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">{card.detail}</CardContent>
-            </Card>
-          ))}
-        </div>
-
-        <AdminHomeContentManager
-          contents={homeContents.map((content) => ({
-            id: content.id,
-            type: content.type,
-            title: content.title,
-            subtitle: content.subtitle,
-            body: content.body,
-            href: content.href,
-            imageUrl: content.imageUrl,
-            badge: content.badge,
-            sortOrder: content.sortOrder,
-            isActive: content.isActive,
-          }))}
-        />
-
-        <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-          <Card>
-            <CardHeader>
-              <CardTitle>ร้านค้าล่าสุด</CardTitle>
-              <CardDescription>สถานะร้านและจำนวนสินค้าที่ลงขาย</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4">
-              {latestShops.map((shop) => (
-                <div key={shop.id} className="flex items-start justify-between gap-3 border-b pb-3 last:border-b-0 last:pb-0">
-                  <div className="min-w-0">
-                    <strong className="block truncate">{shop.name}</strong>
-                    <span className="block truncate text-sm text-muted-foreground">{shop.owner.email}</span>
-                    <span className="text-sm text-muted-foreground">สินค้า {shop._count.products.toLocaleString("th-TH")} รายการ</span>
-                  </div>
-                  <Badge variant={shop.status === "APPROVED" ? "default" : "secondary"}>
-                    {statusLabel[shop.status] ?? shop.status}
-                  </Badge>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>สินค้าล่าสุด</CardTitle>
-              <CardDescription>รายการที่ร้านค้าลงขายและลงประมูล</CardDescription>
-            </CardHeader>
-            <CardContent className="overflow-x-auto">
-              <table className="w-full min-w-[680px] text-left text-sm">
-                <thead className="border-b text-muted-foreground">
-                  <tr>
-                    <th className="py-2 font-medium">สินค้า</th>
-                    <th className="py-2 font-medium">ร้านค้า</th>
-                    <th className="py-2 font-medium">ประเภท</th>
-                    <th className="py-2 font-medium">Rarity</th>
-                    <th className="py-2 font-medium">ราคา</th>
-                    <th className="py-2 font-medium">สถานะ</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {latestProducts.map((product) => (
-                    <tr key={product.id} className="border-b last:border-b-0">
-                      <td className="py-3 font-medium">{product.title}</td>
-                      <td className="py-3 text-muted-foreground">{product.sellerShop.name}</td>
-                      <td className="py-3">{product.mode === "AUCTION" ? "ประมูล" : "ซื้อเลย"}</td>
-                      <td className="py-3">{product.rarity}</td>
-                      <td className="py-3">{moneyFromCents(product.currentPriceCents)}</td>
-                      <td className="py-3">
-                        <Badge variant="outline">{statusLabel[product.status] ?? product.status}</Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>ธุรกรรมกระเป๋าเงินล่าสุด</CardTitle>
-            <CardDescription>ใช้ตรวจสอบการเติมเงิน วงเงินประมูล และรายการเงินในระบบ</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {latestTransactions.map((transaction) => (
-              <div key={transaction.id} className="rounded-md border bg-background p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <strong className="block truncate">{transaction.user.email}</strong>
-                    <span className="text-sm text-muted-foreground">{transaction.type}</span>
-                  </div>
-                  <Badge variant={transaction.status === "COMPLETED" ? "default" : "secondary"}>
-                    {transaction.status}
-                  </Badge>
-                </div>
-                <p className="mt-3 text-xl font-semibold">{moneyFromCents(transaction.amountCents)}</p>
-                {transaction.note ? <p className="mt-1 text-sm text-muted-foreground">{transaction.note}</p> : null}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <div className="grid gap-6 xl:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>คิวตรวจสอบ SLA</CardTitle>
-              <CardDescription>ผู้ซื้อไม่ชำระเงิน ร้านค้าไม่ส่งสินค้า และบัญชีที่ถูกระงับรอแอดมินตรวจ</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              {moderationCases.length === 0 ? (
-                <div className="rounded-md border bg-background p-4 text-sm text-muted-foreground">ยังไม่มีเคสที่ต้องตรวจสอบ</div>
-              ) : (
-                moderationCases.map((moderationCase) => (
-                  <div key={moderationCase.id} className="rounded-md border bg-background p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <strong>{moderationCase.type}</strong>
-                      <Badge variant="destructive">{moderationCase.status}</Badge>
-                    </div>
-                    <p className="mt-2 text-sm text-muted-foreground">{moderationCase.reason}</p>
-                    <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
-                      <span>สมาชิก: {moderationCase.user?.email ?? "-"}</span>
-                      <span>ร้านค้า: {moderationCase.shop?.name ?? "-"}</span>
-                      <span>สินค้า: {moderationCase.order?.product.title ?? "-"}</span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>คำสั่งซื้อเสี่ยงสูง</CardTitle>
-              <CardDescription>รายการหมดเวลาชำระหรือรอคืนเงินภายใน 24 ชม.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              {refundPendingOrders.length === 0 ? (
-                <div className="rounded-md border bg-background p-4 text-sm text-muted-foreground">ยังไม่มีคำสั่งซื้อเสี่ยงสูง</div>
-              ) : (
-                refundPendingOrders.map((order) => (
-                  <div key={order.id} className="rounded-md border bg-background p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <strong>{order.product.title}</strong>
-                      <Badge variant="outline">{order.status}</Badge>
-                    </div>
-                    <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
-                      <span>ผู้ซื้อ: {order.buyer.email} ({order.buyer.status})</span>
-                      <span>ร้านค้า: {order.sellerShop.name} ({order.sellerShop.status})</span>
-                      <span>ครบกำหนดคืนเงิน: {order.refundDueAt ? order.refundDueAt.toLocaleString("th-TH") : "-"}</span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </section>
+      <AdminDashboardClient
+        stats={stats}
+        homeContents={homeContents.map((content) => ({
+          id: content.id,
+          type: content.type,
+          title: content.title,
+          subtitle: content.subtitle,
+          body: content.body,
+          href: content.href,
+          imageUrl: content.imageUrl,
+          badge: content.badge,
+          sortOrder: content.sortOrder,
+          isActive: content.isActive,
+        }))}
+        cardSets={cardSets.map((set) => {
+          const counts = productCountsBySet.get(set.category) ?? { productCount: 0, auctionCount: 0, buyCount: 0 };
+          return {
+            id: set.id,
+            gameName: set.game.name,
+            category: set.category,
+            setCode: set.setCode,
+            setName: set.setName,
+            label: set.label,
+            isActive: set.isActive,
+            sortOrder: set.sortOrder,
+            ...counts,
+          };
+        })}
+        products={products.map((product) => ({
+          id: product.id,
+          title: product.title,
+          cardCode: product.cardCode,
+          setName: product.setName,
+          seller: product.sellerShop.name,
+          mode: product.mode,
+          status: product.status,
+          rarity: product.rarity,
+          currentPriceCents: product.currentPriceCents,
+          auctionEndsAt: product.auctionEndsAt?.toISOString() ?? null,
+          bidCount: product._count.bids,
+          favoriteCount: product._count.favorites,
+        }))}
+        orders={orders.map((order) => ({
+          id: order.id,
+          productTitle: order.product.title,
+          buyerEmail: order.buyer.email,
+          seller: order.sellerShop.name,
+          source: order.source,
+          status: order.status,
+          amountCents: order.amountCents,
+          paymentDueAt: order.paymentDueAt?.toISOString() ?? null,
+          shipDueAt: order.shipDueAt?.toISOString() ?? null,
+          refundDueAt: order.refundDueAt?.toISOString() ?? null,
+          trackingNumber: order.trackingNumber,
+        }))}
+        shops={shops.map((shop) => ({
+          id: shop.id,
+          name: shop.name,
+          ownerEmail: shop.owner.email,
+          status: shop.status,
+          productCount: shop._count.products,
+          orderCount: shop._count.orders,
+          moderationCount: shop._count.moderationCases,
+        }))}
+        users={users.map((account) => ({
+          id: account.id,
+          email: account.email,
+          displayName: account.displayName,
+          role: account.role,
+          status: account.status,
+          walletBalanceCents: account.walletBalanceCents,
+          bidLimitCents: account.bidLimitCents,
+          orderCount: account._count.orders,
+          bidCount: account._count.bids,
+        }))}
+        notifications={notifications.map((notification) => ({
+          id: notification.id,
+          recipient: notification.recipient.email,
+          type: notification.type,
+          title: notification.title,
+          href: notification.href,
+          readAt: notification.readAt?.toISOString() ?? null,
+          createdAt: notification.createdAt.toISOString(),
+        }))}
+        emails={emails.map((email) => ({
+          id: email.id,
+          toEmail: email.toEmail,
+          subject: email.subject,
+          status: email.status,
+          reason: email.reason,
+          createdAt: email.createdAt.toISOString(),
+        }))}
+        moderationCases={moderationCases.map((moderationCase) => ({
+          id: moderationCase.id,
+          type: moderationCase.type,
+          status: moderationCase.status,
+          reason: moderationCase.reason,
+          user: moderationCase.user?.email ?? null,
+          shop: moderationCase.shop?.name ?? null,
+          orderProduct: moderationCase.order?.product.title ?? null,
+          createdAt: moderationCase.createdAt.toISOString(),
+        }))}
+        auditLogs={auditLogs.map((log) => ({
+          id: log.id,
+          action: log.action,
+          targetType: log.targetType,
+          message: log.message,
+          createdAt: log.createdAt.toISOString(),
+        }))}
+      />
     </main>
   );
 };

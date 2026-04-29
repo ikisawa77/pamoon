@@ -19,3 +19,9 @@ export const cardSetDefinitions: CardSetDefinition[] = [
 
 export const getCardSetDefinition = (category: ProductCategory) =>
   cardSetDefinitions.find((set) => set.category === category) ?? cardSetDefinitions[0];
+
+export interface RuntimeCardSetDefinition extends CardSetDefinition {
+  id?: string;
+  isActive: boolean;
+  sortOrder: number;
+}

@@ -195,8 +195,36 @@ const main = async () => {
 
   await connection.beginTransaction();
   try {
-    for (const table of ["EmailNotification", "FavoriteProduct", "ChatMessage", "ChatThread", "ModerationCase", "Notification", "Order", "Bid", "WalletTransaction", "HomeContent", "Product", "Shop", "User"]) {
+    for (const table of ["AdminAuditLog", "EmailNotification", "FavoriteProduct", "ChatMessage", "ChatThread", "ModerationCase", "Notification", "Order", "Bid", "WalletTransaction", "HomeContent", "Product", "CardSet", "CardGame", "Shop", "User"]) {
       await connection.query(`DELETE FROM \`${table}\``);
+    }
+
+    await insert(connection, "CardGame", {
+      id: id("card_game", 1),
+      name: "One Piece Card Game (Japanese)",
+      isActive: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    for (const [index, set] of sets.entries()) {
+      const readableName = set.name
+        .toLowerCase()
+        .split(" ")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+      const dashedCode = set.code.replace(/^OP/, "OP-");
+      await insert(connection, "CardSet", {
+        id: id("card_set", index + 1),
+        gameId: id("card_game", 1),
+        category: set.category,
+        setCode: dashedCode,
+        setName: readableName,
+        label: `[${dashedCode}] ${readableName}`,
+        isActive: true,
+        sortOrder: index + 1,
+        createdAt: now,
+        updatedAt: now,
+      });
     }
 
     await insert(connection, "User", {
