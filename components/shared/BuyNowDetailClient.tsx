@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { AppFooter } from "@/components/shared/AppFooter";
 import { NotificationBell } from "@/components/shared/NotificationBell";
 import { CARD_GAME_NAME } from "@/lib/card-catalog";
 import type { ViewerSummary } from "@/types/marketplace";
@@ -166,68 +167,70 @@ const BuyNowDetailClient = ({ product, viewer }: BuyNowDetailClientProps) => {
           <span className="font-semibold text-slate-950">{product.title}</span>
         </div>
 
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,560px)_minmax(0,1fr)_360px]">
-          <div className="rounded-[28px] border border-white bg-white p-4 shadow-[0_24px_80px_rgba(15,23,42,.10)]">
-            <div className="relative overflow-hidden rounded-[22px] bg-[radial-gradient(circle_at_20%_0%,#fff7d6,transparent_28%),linear-gradient(145deg,#f8fafc,#e2e8f0)] p-4">
-              <div className="absolute left-4 top-4 z-10 flex gap-2">
-                <Badge className="bg-slate-950 text-white hover:bg-slate-950">ซื้อเลย</Badge>
-                <Badge variant="secondary">{product.rarity}</Badge>
-              </div>
-              <div className="relative mx-auto aspect-[100/140] max-h-[660px] overflow-hidden rounded-2xl">
-                {product.imageUrl ? (
-                  <Image
-                    src={product.imageUrl}
-                    alt={product.title}
-                    fill
-                    sizes="(min-width: 1280px) 520px, 100vw"
-                    className="object-contain drop-shadow-2xl"
-                    priority
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center text-sm text-slate-500">ไม่มีรูปสินค้า</div>
-                )}
+        <section className="grid gap-6 lg:grid-cols-[minmax(0,760px)_360px] xl:grid-cols-[minmax(0,820px)_380px]">
+          <div className="min-w-0 space-y-6">
+            <div className="rounded-[28px] border border-white bg-white p-4 shadow-[0_24px_80px_rgba(15,23,42,.10)]">
+              <div className="relative overflow-hidden rounded-[22px] bg-[radial-gradient(circle_at_20%_0%,#fff7d6,transparent_28%),linear-gradient(145deg,#f8fafc,#e2e8f0)] p-4">
+                <div className="absolute left-4 top-4 z-10 flex gap-2">
+                  <Badge className="bg-slate-950 text-white hover:bg-slate-950">ซื้อเลย</Badge>
+                  <Badge variant="secondary">{product.rarity}</Badge>
+                </div>
+                <div className="relative mx-auto aspect-[100/140] max-h-[760px] overflow-hidden rounded-2xl">
+                  {product.imageUrl ? (
+                    <Image
+                      src={product.imageUrl}
+                      alt={product.title}
+                      fill
+                      sizes="(min-width: 1280px) 760px, 100vw"
+                      className="object-contain drop-shadow-2xl"
+                      priority
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-sm text-slate-500">ไม่มีรูปสินค้า</div>
+                  )}
+                </div>
               </div>
             </div>
+
+            <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="mb-5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline">{CARD_GAME_NAME}</Badge>
+                  <Badge variant="outline">{product.setCode}</Badge>
+                  <Badge variant="outline">{product.conditionLabel}</Badge>
+                </div>
+                <h1 className="mt-4 text-4xl font-black leading-tight tracking-tight md:text-5xl">{product.title}</h1>
+                <p className="mt-3 max-w-3xl text-base leading-8 text-slate-600">
+                  การ์ดพร้อมส่งจากร้านค้าที่ผ่านการอนุมัติ เหมาะสำหรับนักสะสมที่ต้องการซื้อทันทีโดยไม่ต้องรอจบประมูล
+                </p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {productFacts.map((fact) => (
+                  <div key={fact.label} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <span className="text-xs font-semibold uppercase text-slate-500">{fact.label}</span>
+                    <strong className="mt-1 block text-slate-950">{fact.value}</strong>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-5 rounded-3xl border border-slate-200 bg-white p-5">
+                <h2 className="text-lg font-black">รายละเอียดจากร้านค้า</h2>
+                <p className="mt-3 text-sm leading-7 text-slate-600">
+                  {product.description ??
+                    "สินค้าตัวอย่างสำหรับทดสอบ marketplace ระบุข้อมูลครบทั้งรหัสการ์ด ชุด ระดับ และสภาพสินค้า ก่อนเพิ่มลงตะกร้าผู้ซื้อสามารถตรวจสอบรายละเอียดทั้งหมดได้จากหน้านี้"}
+                </p>
+              </div>
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <TrustItem icon={<ShieldCheck className="size-5" />} title="Escrow" detail="กันเงินในระบบจนกว่าส่งของ" />
+                <TrustItem icon={<Truck className="size-5" />} title="ส่งภายใน 48 ชม." detail="ร้านค้าต้องจัดส่งตาม SLA" />
+                <TrustItem icon={<MessageCircle className="size-5" />} title="เปิดแชทหลังชำระ" detail="คุยกับร้านค้าได้โดยตรง" />
+              </div>
+            </section>
           </div>
 
-          <section className="space-y-5">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline">{CARD_GAME_NAME}</Badge>
-                <Badge variant="outline">{product.setCode}</Badge>
-                <Badge variant="outline">{product.conditionLabel}</Badge>
-              </div>
-              <h1 className="mt-4 text-4xl font-black leading-tight tracking-tight md:text-5xl">{product.title}</h1>
-              <p className="mt-3 max-w-2xl text-base leading-8 text-slate-600">
-                การ์ดพร้อมส่งจากร้านค้าที่ผ่านการอนุมัติ เหมาะสำหรับนักสะสมที่ต้องการซื้อทันทีโดยไม่ต้องรอจบประมูล
-              </p>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              {productFacts.map((fact) => (
-                <div key={fact.label} className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <span className="text-xs font-semibold uppercase text-slate-500">{fact.label}</span>
-                  <strong className="mt-1 block text-slate-950">{fact.value}</strong>
-                </div>
-              ))}
-            </div>
-
-            <div className="rounded-3xl border border-slate-200 bg-white p-5">
-              <h2 className="text-lg font-black">รายละเอียดจากร้านค้า</h2>
-              <p className="mt-3 text-sm leading-7 text-slate-600">
-                {product.description ??
-                  "สินค้าตัวอย่างสำหรับทดสอบ marketplace ระบุข้อมูลครบทั้งรหัสการ์ด ชุด ระดับ และสภาพสินค้า ก่อนเพิ่มลงตะกร้าผู้ซื้อสามารถตรวจสอบรายละเอียดทั้งหมดได้จากหน้านี้"}
-              </p>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-3">
-              <TrustItem icon={<ShieldCheck className="size-5" />} title="Escrow" detail="กันเงินในระบบจนกว่าส่งของ" />
-              <TrustItem icon={<Truck className="size-5" />} title="ส่งภายใน 48 ชม." detail="ร้านค้าต้องจัดส่งตาม SLA" />
-              <TrustItem icon={<MessageCircle className="size-5" />} title="เปิดแชทหลังชำระ" detail="คุยกับร้านค้าได้โดยตรง" />
-            </div>
-          </section>
-
-          <aside className="h-fit rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_24px_80px_rgba(15,23,42,.10)] xl:sticky xl:top-24">
+          <aside className="h-fit rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_24px_80px_rgba(15,23,42,.10)] lg:sticky lg:top-24">
             <Link
               href={`/shops/${product.sellerShop.slug}`}
               className="mb-5 flex items-center justify-between rounded-2xl bg-slate-50 p-4 transition hover:bg-slate-100"
@@ -281,6 +284,7 @@ const BuyNowDetailClient = ({ product, viewer }: BuyNowDetailClientProps) => {
           </aside>
         </section>
       </main>
+      <AppFooter />
     </div>
   );
 };
