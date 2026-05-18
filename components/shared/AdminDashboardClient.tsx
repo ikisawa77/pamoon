@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { ReactNode } from "react";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
 import Link from "next/link";
 import {
   BookOpen,
@@ -97,7 +97,24 @@ interface ShopRow {
   id: string;
   name: string;
   ownerEmail: string;
+  ownerName: string;
+  ownerRole: string;
   status: string;
+  description: string | null;
+  hasPhysicalStore: boolean;
+  logoUrl: string | null;
+  applicantName: string | null;
+  contactEmail: string | null;
+  phone: string | null;
+  phoneVerifiedAt: string | null;
+  bankName: string | null;
+  bankBranch: string | null;
+  bankAccountName: string | null;
+  bankAccountNumber: string | null;
+  bankBookImageUrl: string | null;
+  address: string;
+  rejectionReason: string | null;
+  reviewedAt: string | null;
   productCount: number;
   orderCount: number;
   moderationCount: number;
@@ -230,6 +247,7 @@ const AdminDashboardClient = ({
   const [templateEdits, setTemplateEdits] = useState<Record<string, EmailTemplateRow>>(() =>
     Object.fromEntries(emailTemplates.map((template) => [template.id, template])),
   );
+  const [shopRejectReasons, setShopRejectReasons] = useState<Record<string, string>>({});
   const { confirm, confirmDialog } = useAppConfirmDialog();
 
   const filteredProducts = useMemo(() => {
@@ -712,6 +730,10 @@ const AdminDashboardClient = ({
         ) : null}
 
         {activeTab === "shops" ? (
+          <ShopReviewPanel shops={shops} shopRejectReasons={shopRejectReasons} setShopRejectReasons={setShopRejectReasons} runAction={runAction} />
+        ) : null}
+
+        {activeTab === "shops" ? (
           <EntityStatusTable
             title="ร้านค้า"
             rows={shops.map((shop) => ({
@@ -907,6 +929,116 @@ const CompactRow = ({ title, subtitle, meta, badge }: { title: string; subtitle:
       <Badge variant={statusVariant(badge)}>{badge}</Badge>
     </div>
   </div>
+);
+
+const AdminInfoTile = ({ label, value }: { label: string; value: string }) => (
+  <div className="rounded-lg border bg-muted/20 p-3">
+    <p className="text-xs text-muted-foreground">{label}</p>
+    <p className="mt-1 break-words text-sm font-semibold">{value}</p>
+  </div>
+);
+
+const ShopReviewPanel = ({
+  shops,
+  shopRejectReasons,
+  setShopRejectReasons,
+  runAction,
+}: {
+  shops: ShopRow[];
+  shopRejectReasons: Record<string, string>;
+  setShopRejectReasons: Dispatch<SetStateAction<Record<string, string>>>;
+  runAction: (payload: Record<string, unknown>, successMessage: string) => Promise<void>;
+}) => (
+  <Card>
+    <CardHeader>
+      <CardTitle>ตรวจคำขอเปิดร้านค้า</CardTitle>
+      <CardDescription>อนุมัติร้านค้าที่ผ่านการยืนยันเบอร์โทรศัพท์ ตรวจบัญชีธนาคาร และข้อมูลที่อยู่ครบถ้วน</CardDescription>
+    </CardHeader>
+    <CardContent className="grid gap-4">
+      {shops.map((shop) => (
+        <div key={shop.id} className="grid gap-4 rounded-xl border bg-background p-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <strong className="text-lg">{shop.name}</strong>
+                <Badge variant={statusVariant(shop.status)}>{shop.status}</Badge>
+                {shop.phoneVerifiedAt ? <Badge variant="outline">ยืนยันเบอร์แล้ว</Badge> : <Badge variant="destructive">ยังไม่ยืนยันเบอร์</Badge>}
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                เจ้าของ: {shop.ownerName} ({shop.ownerEmail}) / role {shop.ownerRole}
+              </p>
+              <p className="mt-2 text-sm text-muted-foreground">{shop.description ?? "ยังไม่มีรายละเอียดร้าน"}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {shop.status !== "APPROVED" ? (
+                <Button size="sm" onClick={() => void runAction({ action: "shop-status", shopId: shop.id, status: "APPROVED" }, "อนุมัติร้านค้าแล้ว")}>
+                  อนุมัติ
+                </Button>
+              ) : null}
+              {shop.status !== "SUSPENDED" ? (
+                <Button size="sm" variant="outline" onClick={() => void runAction({ action: "shop-status", shopId: shop.id, status: "SUSPENDED" }, "ระงับร้านค้าแล้ว")}>
+                  ระงับ
+                </Button>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <AdminInfoTile label="ผู้สมัคร" value={shop.applicantName ?? "-"} />
+            <AdminInfoTile label="เบอร์โทร" value={shop.phone ?? "-"} />
+            <AdminInfoTile label="ธนาคาร" value={[shop.bankName, shop.bankBranch].filter(Boolean).join(" / ") || "-"} />
+            <AdminInfoTile label="เลขบัญชี" value={shop.bankAccountNumber ?? "-"} />
+            <AdminInfoTile label="ชื่อบัญชี" value={shop.bankAccountName ?? "-"} />
+            <AdminInfoTile label="มีหน้าร้าน" value={shop.hasPhysicalStore ? "มี" : "ไม่มี"} />
+            <AdminInfoTile label="สินค้า/คำสั่งซื้อ" value={`${shop.productCount} รายการ / ${shop.orderCount} order`} />
+            <AdminInfoTile label="เคสตรวจสอบ" value={`${shop.moderationCount} เคส`} />
+          </div>
+
+          <div className="rounded-lg border bg-muted/20 p-3 text-sm text-muted-foreground">
+            <strong className="text-foreground">ที่อยู่:</strong> {shop.address || "-"}
+          </div>
+
+          <div className="flex flex-wrap gap-2 text-sm">
+            {shop.logoUrl ? <a className="text-primary underline" href={shop.logoUrl} target="_blank" rel="noreferrer">ดูโลโก้ร้าน</a> : null}
+            {shop.bankBookImageUrl ? <a className="text-primary underline" href={shop.bankBookImageUrl} target="_blank" rel="noreferrer">ดูเอกสารบัญชีธนาคาร</a> : null}
+            {shop.reviewedAt ? <span className="text-muted-foreground">ตรวจล่าสุด: {formatDate(shop.reviewedAt)}</span> : null}
+          </div>
+
+          {shop.status === "REJECTED" && shop.rejectionReason ? (
+            <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">เหตุผลที่ปฏิเสธ: {shop.rejectionReason}</p>
+          ) : null}
+
+          {shop.status === "PENDING" || shop.status === "REJECTED" ? (
+            <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
+              <Input
+                placeholder="เหตุผลในการปฏิเสธ เช่น เอกสารไม่ชัดเจน หรือข้อมูลธนาคารไม่ครบ"
+                value={shopRejectReasons[shop.id] ?? ""}
+                onChange={(event) => setShopRejectReasons((current) => ({ ...current, [shop.id]: event.target.value }))}
+              />
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() =>
+                  void runAction(
+                    {
+                      action: "shop-status",
+                      shopId: shop.id,
+                      status: "REJECTED",
+                      rejectionReason: shopRejectReasons[shop.id] ?? "",
+                    },
+                    "ปฏิเสธคำขอเปิดร้านแล้ว",
+                  )
+                }
+              >
+                ปฏิเสธพร้อมเหตุผล
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      ))}
+      {shops.length === 0 ? <EmptyState text="ยังไม่มีร้านค้าในระบบ" /> : null}
+    </CardContent>
+  </Card>
 );
 
 interface EntityStatusRow {

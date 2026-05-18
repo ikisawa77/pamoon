@@ -15,5 +15,5 @@ export const validationError = (error: ZodError) =>
 
 export const unknownError = (error: unknown) => {
   const message = error instanceof Error ? error.message : "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ";
-  return apiError("ระบบหลังบ้านยังทำงานไม่สำเร็จ", 500, { message });
+  return apiError("ระบบยังทำงานไม่สำเร็จ", 500, { message });
 };

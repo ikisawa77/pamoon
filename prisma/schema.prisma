@@ -224,6 +224,8 @@ model User {
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   shops              Shop[]
+  reviewedShops      Shop[]              @relation("ShopReviewer")
+  phoneOtps          PhoneOtp[]
   bids               Bid[]
   walletTransactions WalletTransaction[]
   orders             Order[]
@@ -241,23 +243,62 @@ model User {
 }
 
 model Shop {
-  id          String     @id @default(cuid())
-  ownerId     String
-  name        String     @unique @db.VarChar(120)
-  slug        String     @unique @db.VarChar(120)
-  status      ShopStatus @default(PENDING)
-  rating      Float      @default(0)
-  reviewCount Int        @default(0)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  owner       User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  products    Product[]
-  orders      Order[]
-  chatThreads ChatThread[]
+  id                 String     @id @default(cuid())
+  ownerId            String
+  name               String     @unique @db.VarChar(120)
+  slug               String     @unique @db.VarChar(120)
+  status             ShopStatus @default(PENDING)
+  description        String?    @db.Text
+  hasPhysicalStore   Boolean    @default(false)
+  logoUrl            String?    @db.VarChar(255)
+  applicantFirstName String?    @db.VarChar(80)
+  applicantLastName  String?    @db.VarChar(80)
+  contactEmail       String?    @db.VarChar(191)
+  phone              String?    @db.VarChar(30)
+  phoneVerifiedAt    DateTime?
+  bankName           String?    @db.VarChar(120)
+  bankBranch         String?    @db.VarChar(120)
+  bankAccountName    String?    @db.VarChar(120)
+  bankAccountNumber  String?    @db.VarChar(40)
+  bankBookImageUrl   String?    @db.VarChar(255)
+  addressLine        String?    @db.Text
+  subdistrict        String?    @db.VarChar(120)
+  district           String?    @db.VarChar(120)
+  province           String?    @db.VarChar(120)
+  postalCode         String?    @db.VarChar(10)
+  rejectionReason    String?    @db.VarChar(500)
+  reviewedAt         DateTime?
+  reviewedById       String?
+  rating             Float      @default(0)
+  reviewCount        Int        @default(0)
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  owner              User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  reviewedBy         User?      @relation("ShopReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  products           Product[]
+  orders             Order[]
+  chatThreads        ChatThread[]
   moderationCases ModerationCase[]
 
   @@index([ownerId])
   @@index([status])
+  @@index([reviewedById])
+}
+
+model PhoneOtp {
+  id           String    @id @default(cuid())
+  userId       String
+  phone        String    @db.VarChar(30)
+  codeHash     String    @db.VarChar(255)
+  expiresAt    DateTime
+  attemptCount Int       @default(0)
+  verifiedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, phone, createdAt])
+  @@index([expiresAt])
 }
 
 model Product {

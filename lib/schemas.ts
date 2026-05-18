@@ -2,7 +2,12 @@ import { z } from "zod";
 import { productCategoryValues } from "@/lib/card-catalog";
 
 const optionalText = (maxLength: number) =>
-  z.preprocess((value) => (typeof value === "string" && value.trim() === "" ? undefined : value), z.string().trim().max(maxLength).optional());
+  z.preprocess(
+    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    z.string().trim().max(maxLength).optional(),
+  );
+
+const thaiPhoneRegex = /^(?:\+66|0)[689]\d{8}$/;
 
 export const topUpSchema = z.object({
   amount: z.coerce.number().int().min(100).max(50000),
@@ -15,6 +20,40 @@ export const shopRegistrationSchema = z.object({
   acceptedTerms: z.literal(true),
 });
 
+export const otpSendSchema = z.object({
+  phone: z
+    .string()
+    .trim()
+    .regex(thaiPhoneRegex, "กรุณากรอกเบอร์โทรศัพท์ไทยให้ถูกต้อง เช่น 0812345678 หรือ +66812345678"),
+});
+
+export const otpVerifySchema = otpSendSchema.extend({
+  code: z.string().trim().regex(/^\d{6}$/, "รหัส OTP ต้องเป็นตัวเลข 6 หลัก"),
+});
+
+export const sellerApplicationSchema = z.object({
+  shopName: z.string().trim().min(2, "กรุณากรอกชื่อร้านค้า").max(120),
+  description: z.string().trim().min(10, "กรุณากรอกรายละเอียดร้านอย่างน้อย 10 ตัวอักษร").max(2000),
+  hasPhysicalStore: z.boolean(),
+  logoUrl: optionalText(255),
+  firstName: z.string().trim().min(1, "กรุณากรอกชื่อ").max(80),
+  lastName: z.string().trim().min(1, "กรุณากรอกนามสกุล").max(80),
+  phone: z.string().trim().regex(thaiPhoneRegex, "กรุณายืนยันเบอร์โทรศัพท์ไทยให้ถูกต้อง"),
+  bankName: z.string().trim().min(2, "กรุณาเลือกธนาคาร").max(120),
+  bankBranch: z.string().trim().min(2, "กรุณากรอกสาขาธนาคาร").max(120),
+  bankAccountName: z.string().trim().min(2, "กรุณากรอกชื่อบัญชี").max(120),
+  bankAccountNumber: z.string().trim().regex(/^\d{6,20}$/, "เลขที่บัญชีต้องเป็นตัวเลข 6-20 หลัก"),
+  bankBookImageUrl: optionalText(255),
+  addressLine: z.string().trim().min(5, "กรุณากรอกที่อยู่").max(1000),
+  subdistrict: z.string().trim().min(2, "กรุณากรอกแขวง/ตำบล").max(120),
+  district: z.string().trim().min(2, "กรุณากรอกเขต/อำเภอ").max(120),
+  province: z.string().trim().min(2, "กรุณากรอกจังหวัด").max(120),
+  postalCode: z.string().trim().regex(/^\d{5}$/, "รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก"),
+  acceptedTerms: z.literal(true, {
+    errorMap: () => ({ message: "กรุณายอมรับเงื่อนไขการสมัครร้านค้า" }),
+  }),
+});
+
 export const listingSchema = z.object({
   mode: z.enum(["auction", "buy"]),
   game: z.literal("One Piece Card Game (Japanese)"),
@@ -23,7 +62,10 @@ export const listingSchema = z.object({
   code: z
     .string()
     .trim()
-    .regex(/^(?:OP|EB|ST)\d{2}-\d{3}$|^PRB\d{2}-\d{3}$/i, "รหัสการ์ดต้องอยู่ในรูปแบบ OP01-121, EB01-001, PRB01-001 หรือ ST01-001")
+    .regex(
+      /^(?:OP|EB|ST)\d{2}-\d{3}$|^PRB\d{2}-\d{3}$/i,
+      "รหัสการ์ดต้องอยู่ในรูปแบบ OP01-121, EB01-001, PRB01-001 หรือ ST01-001",
+    )
     .transform((value) => value.toUpperCase()),
   rarity: z.enum(["C", "UC", "R", "L", "SR", "SEC", "SP", "P"]),
   openingPrice: z.coerce.number().int().min(100).max(500000),
@@ -121,12 +163,11 @@ export const loginSchema = z.object({
 
 export const registerSchema = z
   .object({
-    displayName: z.string().trim().min(2).max(120),
-    email: z.string().trim().email().max(191).transform((value) => value.toLowerCase()),
-    password: z.string().min(6).max(128),
-    confirmPassword: z.string().min(6).max(128),
-    role: z.enum(["MEMBER", "RESELLER"]),
-    shopName: z.string().trim().max(120).optional(),
+    displayName: z.string().trim().min(2, "กรุณากรอกชื่อที่แสดง").max(120),
+    email: z.string().trim().email("กรุณากรอกอีเมลให้ถูกต้อง").max(191).transform((value) => value.toLowerCase()),
+    password: z.string().min(6, "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร").max(128),
+    confirmPassword: z.string().min(6, "กรุณายืนยันรหัสผ่าน").max(128),
+    role: z.literal("MEMBER").default("MEMBER"),
   })
   .superRefine((input, context) => {
     if (input.password !== input.confirmPassword) {
@@ -136,18 +177,13 @@ export const registerSchema = z
         path: ["confirmPassword"],
       });
     }
-
-    if (input.role === "RESELLER" && (!input.shopName || input.shopName.length < 2)) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "กรุณากรอกชื่อร้านค้าสำหรับ Reseller",
-        path: ["shopName"],
-      });
-    }
   });
 
 export type TopUpInput = z.infer<typeof topUpSchema>;
 export type ShopRegistrationInput = z.infer<typeof shopRegistrationSchema>;
+export type OtpSendInput = z.infer<typeof otpSendSchema>;
+export type OtpVerifyInput = z.infer<typeof otpVerifySchema>;
+export type SellerApplicationInput = z.infer<typeof sellerApplicationSchema>;
 export type ListingInput = z.infer<typeof listingSchema>;
 export type CreateProductApiInput = z.infer<typeof createProductApiSchema>;
 export type CreateBidApiInput = z.infer<typeof createBidApiSchema>;

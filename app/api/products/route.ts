@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db/prisma";
 import { apiError, unknownError, validationError } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { CARD_GAME_NAME } from "@/lib/card-catalog";
 import { getCardSetDefinitionFromDb } from "@/lib/card-catalog.server";
+import { prisma } from "@/lib/db/prisma";
 import { createProductApiSchema } from "@/lib/schemas";
 import type { ListingMode, ProductCategory, ProductRarity } from "@/types/marketplace";
 
@@ -77,7 +77,7 @@ export const POST = async (request: NextRequest) => {
     }
 
     if (user.role !== "RESELLER" && user.role !== "ADMIN") {
-      return apiError("บัญชีนี้ยังไม่มีสิทธิ์ลงสินค้า", 403);
+      return apiError("บัญชีนี้ยังไม่มีสิทธิ์ลงสินค้า ต้องสมัครร้านค้าและรอผู้ดูแลอนุมัติก่อน", 403);
     }
 
     if (user.status !== "ACTIVE") {
@@ -102,10 +102,7 @@ export const POST = async (request: NextRequest) => {
     });
 
     if (!sellerShop) {
-      return apiError(
-        user.role === "ADMIN" ? "ไม่พบร้าน Admin Dev Shop สำหรับลงสินค้าทดสอบ" : "ไม่พบร้านค้าที่อนุมัติแล้ว",
-        404,
-      );
+      return apiError(user.role === "ADMIN" ? "ไม่พบร้าน Admin Dev Shop สำหรับลงสินค้าทดสอบ" : "ไม่พบร้านค้าที่ผ่านการอนุมัติแล้ว", 404);
     }
 
     const auctionEndsAt = input.mode === "auction" ? resolveAuctionEnd(input.auctionEndsAt) : null;

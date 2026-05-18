@@ -3,8 +3,8 @@ import { RegisterForm } from "@/components/shared/RegisterForm";
 
 const RegisterPage = () => (
   <AuthShell
-    title="สร้างบัญชีใหม่"
-    description="สมัครเป็น Member เพื่อซื้อและประมูล หรือเปิดบัญชี Reseller เพื่อขายสินค้าและเปิดประมูลได้ทันที"
+    title="สร้างบัญชีสมาชิก"
+    description="สมัครเป็นสมาชิกทั่วไปก่อน เพื่อซื้อสินค้า เข้าร่วมประมูล และส่งคำขอเปิดร้านค้าภายหลังจากหน้าโปรไฟล์"
   >
     <RegisterForm />
   </AuthShell>

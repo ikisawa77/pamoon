@@ -24,6 +24,7 @@ const actionSchema = z.discriminatedUnion("action", [
     action: z.literal("shop-status"),
     shopId: z.string().min(1),
     status: z.enum(["PENDING", "APPROVED", "REJECTED", "SUSPENDED"]),
+    rejectionReason: z.string().trim().max(500).optional(),
   }),
   z.object({
     action: z.literal("resolve-moderation"),
@@ -119,11 +120,76 @@ export const POST = async (request: NextRequest) => {
     }
 
     if (input.action === "shop-status") {
-      const shop = await prisma.shop.update({
-        where: { id: input.shopId },
-        data: { status: input.status },
-        select: { id: true, name: true, status: true },
+      const shop = await prisma.$transaction(async (tx) => {
+        const currentShop = await tx.shop.findUnique({
+          where: { id: input.shopId },
+          select: { id: true, name: true, ownerId: true, owner: { select: { role: true, bidLimitCents: true } } },
+        });
+
+        if (!currentShop) {
+          throw new Error("ไม่พบร้านค้าที่ต้องการจัดการ");
+        }
+
+        if (input.status === "REJECTED" && !input.rejectionReason?.trim()) {
+          throw new Error("กรุณาระบุเหตุผลในการปฏิเสธร้านค้า");
+        }
+
+        const updatedShop = await tx.shop.update({
+          where: { id: input.shopId },
+          data: {
+            status: input.status,
+            reviewedAt: new Date(),
+            reviewedById: admin.id,
+            rejectionReason: input.status === "REJECTED" ? input.rejectionReason?.trim() : null,
+          },
+          select: { id: true, name: true, status: true, ownerId: true },
+        });
+
+        if (input.status === "APPROVED" && currentShop.owner.role !== "ADMIN") {
+          await tx.user.update({
+            where: { id: currentShop.ownerId },
+            data: {
+              role: "RESELLER",
+              bidLimitCents: Math.max(currentShop.owner.bidLimitCents, 30000000),
+            },
+          });
+        }
+
+        if (input.status !== "APPROVED" && currentShop.owner.role !== "ADMIN") {
+          const approvedShopCount = await tx.shop.count({
+            where: { ownerId: currentShop.ownerId, status: "APPROVED", id: { not: currentShop.id } },
+          });
+
+          if (approvedShopCount === 0) {
+            await tx.user.update({
+              where: { id: currentShop.ownerId },
+              data: { role: "MEMBER" },
+            });
+          }
+        }
+
+        const notificationCopy =
+          input.status === "APPROVED"
+            ? { title: "ร้านค้าได้รับการอนุมัติแล้ว", message: "คุณสามารถลงขายสินค้าและเปิดประมูลได้แล้ว" }
+            : input.status === "REJECTED"
+              ? { title: "คำขอเปิดร้านถูกปฏิเสธ", message: input.rejectionReason?.trim() ?? "กรุณาตรวจสอบข้อมูลและส่งคำขอใหม่" }
+              : input.status === "SUSPENDED"
+                ? { title: "ร้านค้าถูกระงับ", message: "ร้านค้าถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ" }
+                : { title: "สถานะร้านค้าถูกปรับเป็นรอตรวจสอบ", message: "ผู้ดูแลระบบกำลังตรวจสอบข้อมูลร้านค้า" };
+
+        await tx.notification.create({
+          data: {
+            recipientId: currentShop.ownerId,
+            type: "SHOP_MESSAGE",
+            title: notificationCopy.title,
+            message: notificationCopy.message,
+            href: "/account/seller",
+          },
+        });
+
+        return updatedShop;
       });
+
       await audit(admin.id, "SHOP_STATUS_CHANGED", "Shop", shop.id, `เปลี่ยนสถานะร้าน ${shop.name} เป็น ${shop.status}`);
       return NextResponse.json({ ok: true, shop });
     }

@@ -14,7 +14,7 @@ interface AuthShellProps {
 const featureItems = [
   { icon: Gavel, label: "ประมูลสด", detail: "บิดแบบ realtime พร้อมแจ้งเตือนในระบบ" },
   { icon: WalletCards, label: "Wallet + Escrow", detail: "กันเงินก่อนจ่ายร้านค้าเมื่อรายการสำเร็จ" },
-  { icon: Store, label: "Reseller", detail: "ลงขายและเปิดประมูลได้ทันทีหลังสมัคร" },
+  { icon: Store, label: "สมัครร้านค้า", detail: "สมัครสมาชิกก่อน แล้วส่งคำขอเปิดร้านให้ผู้ดูแลอนุมัติ" },
   { icon: ShieldCheck, label: "Admin Control", detail: "ดูแลร้านค้า คำสั่งซื้อ แจ้งเตือน และ SLA" },
 ];
 
@@ -31,7 +31,7 @@ const AuthShell = ({ title, description, children }: AuthShellProps) => (
         <div className="relative z-10 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
             <span className="flex size-11 rotate-[-8deg] items-center justify-center rounded-xl bg-primary text-lg font-bold shadow-2xl shadow-primary/30">
-              ★
+              *
             </span>
             <span className="text-2xl font-bold">BidCard TH</span>
           </Link>
@@ -40,11 +40,9 @@ const AuthShell = ({ title, description, children }: AuthShellProps) => (
 
         <div className="relative z-10 max-w-xl pb-10">
           <Badge className="mb-5 border-white/15 bg-white/10 text-white">Marketplace Command</Badge>
-          <h1 className="text-5xl font-bold leading-[1.05] tracking-tight">
-            ระบบสมาชิก ร้านค้า และหลังบ้านใน flow เดียว
-          </h1>
+          <h1 className="text-5xl font-bold leading-[1.05] tracking-tight">ระบบสมาชิก ร้านค้า และหลังบ้านใน flow เดียว</h1>
           <p className="mt-5 max-w-lg text-lg leading-8 text-white/72">
-            Member สำหรับซื้อและประมูล, Reseller สำหรับลงขาย และ Admin สำหรับดูแลระบบทั้งหมด
+            Member สำหรับซื้อและประมูล, Reseller สำหรับลงขายหลังผ่านอนุมัติ และ Admin สำหรับดูแลระบบทั้งหมด
           </p>
           <div className="mt-8 grid grid-cols-2 gap-3">
             {featureItems.map((item) => (
