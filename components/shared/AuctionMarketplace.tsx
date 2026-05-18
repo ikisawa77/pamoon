@@ -21,7 +21,6 @@ import {
   Menu,
   Plus,
   Search,
-  ShoppingCart,
   Store,
   Trophy,
   Wallet,
@@ -65,6 +64,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useAppConfirmDialog } from "@/components/shared/AppConfirmDialog";
+import { CartNavButton } from "@/components/shared/CartNavButton";
 import { NotificationBell } from "@/components/shared/NotificationBell";
 import { CARD_GAME_NAME, cardSetDefinitions, getCardSetDefinition } from "@/lib/card-catalog";
 import { cn } from "@/lib/utils";
@@ -158,14 +159,11 @@ const formatMoney = (value: number, compact = false) =>
     .format(value)
     .replace("THB", "เธฟ");
 
-const categoryLabels: Record<ProductCategory | "all", string> = {
-  all: "เธ—เธฑเนเธเธซเธกเธ”",
-  op01: "OP-01 ROMANCE DAWN",
-  op02: "OP-02 PARAMOUNT WAR",
-  op03: "OP-03 PILLARS OF STRENGTH",
-  op04: "OP-04 KINGDOMS OF INTRIGUE",
-  op05: "OP-05 AWAKENING OF THE NEW ERA",
-};
+const categoryOptions: Array<ProductCategory | "all"> = ["all", ...cardSetDefinitions.map((set) => set.category)];
+const categoryLabels = new Map<ProductCategory | "all", string>([
+  ["all", "ทั้งหมด"],
+  ...cardSetDefinitions.map((set) => [set.category, `${set.setCode} ${set.setName}`] as const),
+]);
 
 const rarityOptions: ProductRarity[] = ["C", "UC", "R", "L", "SR", "SEC", "SP", "P"];
 
@@ -183,7 +181,7 @@ const rarityLabels: Record<ProductRarity, string> = {
 const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMarketplaceProps) => {
   const viewer = initialData.viewer;
   const isGuest = viewer.role === "GUEST";
-  const isShop = viewer.role === "SHOP";
+  const isShop = viewer.role === "RESELLER";
   const isAdmin = viewer.role === "ADMIN";
   const canListProducts = isShop || isAdmin;
   const [wallet, setWallet] = useState<WalletSummary>(initialData.wallet);
@@ -204,6 +202,7 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
   const [listingOpen, setListingOpen] = useState(false);
   const [listingMode, setListingMode] = useState<ListingMode>("auction");
   const [topUpAmount, setTopUpAmount] = useState("1000");
+  const { confirm, confirmDialog } = useAppConfirmDialog();
 
   const addActivity = (title: string, detail: string) => {
     setActivities((current) => [
@@ -299,7 +298,17 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
       return;
     }
 
-    const confirmed = window.confirm(`ยืนยันการบิด ${product.title} ที่ราคา ${formatMoney(product.nextBid, true)} หรือไม่`);
+    const confirmed = await confirm({
+      title: "ยืนยันการบิด",
+      description: "ระบบจะบันทึกราคาเสนอของคุณทันที และอัปเดตแจ้งเตือนเมื่อมีสมาชิกคนอื่นบิดทับ",
+      confirmLabel: "ยืนยันบิด",
+      cancelLabel: "ยกเลิก",
+      tone: "bid",
+      details: [
+        { label: "การ์ด", value: product.title },
+        { label: "ราคาเสนอ", value: formatMoney(product.nextBid, true) },
+      ],
+    });
 
     if (!confirmed) {
       setNotice("ยกเลิกการบิดแล้ว");
@@ -595,6 +604,7 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
         onOpenChange={setListingOpen}
         onSubmit={handleCreateListing}
       />
+      {confirmDialog}
     </div>
   );
 };
@@ -610,14 +620,15 @@ const SiteHeader = ({ viewer, wallet, onOpenTopUp, onOpenListing }: SiteHeaderPr
   const pathname = usePathname();
   const isGuest = viewer.role === "GUEST";
   const isMember = viewer.role === "MEMBER";
-  const isShop = viewer.role === "SHOP";
+  const isShop = viewer.role === "RESELLER";
+  const isSeller = isShop;
   const isAdmin = viewer.role === "ADMIN";
   const navItems = [
-    { label: "เธเธฃเธฐเธกเธนเธฅ", icon: Trophy, href: "/auctions" },
-    { label: "เธเธทเนเธญเน€เธฅเธข", icon: CreditCard, href: "/buy-now" },
-    { label: "เธ•เธฅเธฒเธ”เธฃเนเธฒเธเธเนเธฒ", icon: Store, href: "/shops" },
-    { label: "เธเธญเธฅเน€เธฅเธเธเธฑเธ", icon: BookOpen, href: "/collection" },
-    { label: "เธเนเธงเธขเน€เธซเธฅเธทเธญ", icon: CircleHelp, href: "/help" },
+    { label: "ประมูล", icon: Trophy, href: "/auctions" },
+    { label: "ซื้อเลย", icon: CreditCard, href: "/buy-now" },
+    { label: "Reseller", icon: Store, href: "/shops" },
+    { label: "รายการโปรด", icon: BookOpen, href: "/collection" },
+    { label: "ช่วยเหลือ", icon: CircleHelp, href: "/help" },
   ];
   const profileInitials = viewer.displayName.slice(0, 2).toUpperCase();
 
@@ -626,7 +637,7 @@ const SiteHeader = ({ viewer, wallet, onOpenTopUp, onOpenListing }: SiteHeaderPr
       <div className="grid gap-3 px-4 py-3 md:grid-cols-[auto_1fr_auto] md:items-center">
       <Link href="/" className="flex items-center gap-2">
         <div className="flex size-10 rotate-[-8deg] items-center justify-center rounded-md bg-primary text-primary-foreground shadow-lg shadow-primary/20">
-          โ…
+          ★
         </div>
         <div className="text-2xl font-bold tracking-tight">
           <span>BidCard</span> <span className="text-primary">TH</span>
@@ -668,10 +679,10 @@ const SiteHeader = ({ viewer, wallet, onOpenTopUp, onOpenListing }: SiteHeaderPr
         {isGuest ? (
           <>
             <Button asChild variant="outline" className="shrink-0">
-              <Link href="/login">เน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธ</Link>
+              <Link href="/login">เข้าสู่ระบบ</Link>
             </Button>
             <Button asChild className="shrink-0">
-              <Link href="/register">เธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธ</Link>
+              <Link href="/register">สมัครสมาชิก</Link>
             </Button>
           </>
         ) : null}
@@ -679,30 +690,26 @@ const SiteHeader = ({ viewer, wallet, onOpenTopUp, onOpenListing }: SiteHeaderPr
           <Button asChild variant="outline" className="hidden shrink-0 sm:inline-flex">
             <Link href="/seller/register">
               <Building2 data-icon="inline-start" />
-              เธชเธกเธฑเธเธฃเธฃเนเธฒเธเธเนเธฒ
+              สมัคร Reseller
             </Link>
           </Button>
         ) : null}
-        {isShop || isAdmin ? (
+        {isSeller || isAdmin ? (
           <Button type="button" className="hidden shrink-0 sm:inline-flex" onClick={onOpenListing}>
             <Plus data-icon="inline-start" />
-            เธฅเธเธชเธดเธเธเนเธฒ
+            ลงสินค้า
           </Button>
         ) : null}
         {isAdmin ? (
           <Button asChild className="shrink-0">
-            <Link href="/admin">เธซเธฅเธฑเธเธเนเธฒเธ Admin</Link>
+            <Link href="/admin">หลังบ้าน Admin</Link>
           </Button>
         ) : null}
         <Button type="button" className="shrink-0 bg-wallet text-wallet-foreground hover:bg-wallet/90" onClick={onOpenTopUp}>
-          เน€เธ•เธดเธกเน€เธเธดเธ
+          เติมเงิน
         </Button>
         <NotificationBell className="relative shrink-0" />
-        <Button asChild variant="ghost" size="icon" className="shrink-0" aria-label="เธ•เธฐเธเธฃเนเธฒ">
-          <Link href="/cart">
-          <ShoppingCart />
-          </Link>
-        </Button>
+        <CartNavButton className="shrink-0" />
         {!isGuest ? (
           <Button asChild variant="ghost" className="hidden gap-2 xl:flex">
           <Link href="/account">
@@ -712,25 +719,25 @@ const SiteHeader = ({ viewer, wallet, onOpenTopUp, onOpenListing }: SiteHeaderPr
           <span className="text-left leading-tight">
             <span className="block font-semibold">{viewer.displayName}</span>
             <span className="block text-xs text-muted-foreground">
-              {isShop ? "ร้านค้า" : isAdmin ? "ผู้ดูแลทดสอบระบบ" : "สมาชิก"}
+              {isSeller ? "Reseller" : isAdmin ? "ผู้ดูแลทดสอบระบบ" : "สมาชิก"}
             </span>
           </span>
           <ChevronDown data-icon="inline-end" />
           </Link>
         </Button>
         ) : null}
-        {isShop || isAdmin ? (
+        {isSeller || isAdmin ? (
           <Button type="button" className="xl:hidden" onClick={onOpenListing}>
           <Plus data-icon="inline-start" />
-          เธฅเธเธชเธดเธเธเนเธฒ
+          ลงสินค้า
         </Button>
         ) : null}
       </div>
       </div>
       <div className="border-t bg-muted/50 px-4 py-2 text-sm text-muted-foreground">
-        {isGuest ? "เธขเธฑเธเนเธกเนเนเธ”เนเธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธ: เธ”เธนเธฃเธฒเธขเธเธฒเธฃเนเธ”เนเธ—เธฑเนเธเธซเธกเธ” เนเธ•เนเธ•เนเธญเธเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธเธเนเธญเธเธเธทเนเธญ เธเธฃเธฐเธกเธนเธฅ เน€เธ•เธดเธกเน€เธเธดเธ เธซเธฃเธทเธญเธชเธกเธฑเธเธฃเธฃเนเธฒเธเธเนเธฒ" : null}
-        {isMember ? "เนเธซเธกเธ”เธชเธกเธฒเธเธดเธ: เธเธทเนเธญเธชเธดเธเธเนเธฒ เน€เธชเธเธญเธฃเธฒเธเธฒ เน€เธ•เธดเธกเน€เธเธดเธ เนเธฅเธฐเธชเธกเธฑเธเธฃเธฃเนเธฒเธเธเนเธฒเนเธ”เนเธเธฒเธเน€เธกเธเธนเธ”เนเธฒเธเธเธ" : null}
-        {isShop ? "เนเธซเธกเธ”เธฃเนเธฒเธเธเนเธฒ: เธฅเธเธชเธดเธเธเนเธฒ เน€เธเธดเธ”เธเธฃเธฐเธกเธนเธฅ เนเธฅเธฐเธ•เธดเธ”เธ•เธฒเธกเธขเธญเธ”เธเธฒเธขเธเธฒเธเน€เธกเธเธนเธฃเนเธฒเธเธเนเธฒเนเธ”เน" : null}
+        {isGuest ? "ยังไม่สมัครสมาชิก: ดูรายการได้ทั้งหมด แต่ต้องเข้าสู่ระบบก่อนซื้อ ประมูล เติมเงิน หรือสมัคร Reseller" : null}
+        {isMember ? "โหมดสมาชิก: ซื้อสินค้า เสนอราคา เติมเงิน และสมัคร Reseller ได้จากเมนูด้านบน" : null}
+        {isSeller ? "โหมด Reseller: ลงสินค้า เปิดประมูล และติดตามยอดขายจากเมนูร้านค้าได้" : null}
         {isAdmin ? "โหมดผู้ดูแลสำหรับทดสอบระบบ: ซื้อ ประมูล เติมเงิน ลงสินค้า และเปิดหลังบ้านได้ในบัญชีเดียว" : null}
       </div>
     </header>
@@ -770,12 +777,12 @@ const RoleNotice = ({ viewer }: RoleNoticeProps) => {
     );
   }
 
-  if (viewer.role === "SHOP") {
+  if (viewer.role === "RESELLER") {
     return (
       <div className="flex flex-col gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
-        <span><strong>เธฃเนเธฒเธเธเนเธฒ:</strong> เธฅเธเธชเธดเธเธเนเธฒ เน€เธเธดเธ”เธเธฃเธฐเธกเธนเธฅ เนเธฅเธฐเธเธฑเธ”เธเธฒเธฃเธฃเธฒเธขเธเธฒเธฃเธเธฒเธขเนเธ”เนเธเธฒเธเธเธธเนเธกเธฅเธเธชเธดเธเธเนเธฒ</span>
+        <span><strong>Reseller:</strong> ลงสินค้า เปิดประมูล และจัดการรายการขายได้จากปุ่มลงสินค้า</span>
         <Button asChild>
-          <Link href="/shops">เธ”เธนเธ•เธฅเธฒเธ”เธฃเนเธฒเธเธเนเธฒ</Link>
+          <Link href="/shops">ดูตลาดร้านค้า</Link>
         </Button>
       </div>
     );
@@ -831,10 +838,10 @@ const FilterSidebar = ({ filters, onChange, onClear }: FilterSidebarProps) => (
         onValueChange={(value) => onChange({ ...filters, category: value as ProductCategory | "all" })}
         className="flex flex-col gap-3"
       >
-        {(["all", "op01", "op02", "op03", "op04", "op05"] as const).map((value, index) => (
+        {categoryOptions.map((value, index) => (
           <label key={value} className="flex items-center gap-2 text-sm">
             <RadioGroupItem value={value} />
-            <span className="flex-1">{categoryLabels[value]}</span>
+            <span className="flex-1">{categoryLabels.get(value) ?? value.toUpperCase()}</span>
             {index > 0 && <span className="text-xs text-muted-foreground">{[32, 32, 32, 32, 32][index - 1]}</span>}
           </label>
         ))}
@@ -1059,21 +1066,21 @@ interface RightPanelProps {
 }
 
 const RightPanel = ({ viewer, wallet, activities, onOpenTopUp, onOpenShop, onOpenListing }: RightPanelProps) => {
-  const canListProducts = viewer.role === "SHOP" || viewer.role === "ADMIN";
+  const canListProducts = viewer.role === "RESELLER" || viewer.role === "ADMIN";
 
   return (
     <aside className="flex flex-col gap-4 lg:grid lg:grid-cols-2 xl:sticky xl:top-24 xl:flex xl:h-[calc(100vh-7rem)] xl:overflow-auto">
       <Card>
         <CardHeader>
           <CardTitle>
-            {viewer.role === "GUEST" ? "ยังไม่สมัครสมาชิก" : viewer.role === "SHOP" ? "เมนูร้านค้า" : viewer.role === "ADMIN" ? "Admin Test Mode" : "เมนูสมาชิก"}
+            {viewer.role === "GUEST" ? "ยังไม่สมัครสมาชิก" : viewer.role === "RESELLER" ? "เมนู Reseller" : viewer.role === "ADMIN" ? "Admin Test Mode" : "เมนูสมาชิก"}
           </CardTitle>
           <CardDescription>
             {viewer.role === "GUEST"
               ? "สมัครสมาชิกเพื่อซื้อ ประมูล เติมเงิน และสมัครเปิดร้าน"
               : viewer.role === "ADMIN"
                 ? "โหมดผู้ดูแลสำหรับทดสอบตลาดและหลังบ้านในบัญชีเดียว"
-                : viewer.role === "SHOP"
+                : viewer.role === "RESELLER"
                   ? "ลงสินค้า เปิดประมูล และติดตามยอดขาย"
                   : "ซื้อสินค้า เสนอราคา เติมเงิน และสมัครร้านค้าได้"}
           </CardDescription>
@@ -1199,28 +1206,36 @@ interface TopUpDialogProps {
 
 const TopUpDialog = ({ open, amount, onAmountChange, onOpenChange, onSubmit }: TopUpDialogProps) => (
   <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>เน€เธ•เธดเธกเน€เธเธดเธ</DialogTitle>
-        <DialogDescription>เน€เธฅเธทเธญเธเธเธณเธเธงเธเน€เธเธดเธเธซเธฃเธทเธญเธเธฃเธญเธเน€เธญเธ เธฃเธฐเธเธเธ•เธฑเธงเธญเธขเนเธฒเธเธเธฐเธญเธฑเธเน€เธ”เธ•เธขเธญเธ”เธ—เธฑเธเธ—เธต</DialogDescription>
-      </DialogHeader>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {[500, 1000, 2000, 5000].map((value) => (
-          <Button key={value} type="button" variant="outline" onClick={() => onAmountChange(String(value))}>
-            {formatMoney(value, true)}
-          </Button>
-        ))}
+    <DialogContent className="overflow-hidden p-0 sm:max-w-xl">
+      <div className="border-b bg-muted/40 p-6">
+        <DialogHeader className="text-left">
+          <div className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-wallet text-wallet-foreground shadow-lg shadow-wallet/20">
+            <Wallet className="size-5" />
+          </div>
+          <DialogTitle className="text-2xl">เติมเงินเข้ากระเป๋า</DialogTitle>
+          <DialogDescription>เลือกจำนวนเงินหรือกรอกเอง ระบบทดสอบจะอัปเดตยอดทันทีหลังยืนยัน</DialogDescription>
+        </DialogHeader>
       </div>
-      <Input type="number" min={100} step={100} value={amount} onChange={(event) => onAmountChange(event.target.value)} />
-      <DialogFooter>
-        <Button type="button" className="bg-wallet text-wallet-foreground hover:bg-wallet/90" onClick={onSubmit}>
-          เธขเธทเธเธขเธฑเธเน€เธ•เธดเธกเน€เธเธดเธ
-        </Button>
-      </DialogFooter>
+      <div className="grid gap-5 p-6">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {[500, 1000, 2000, 5000].map((value) => (
+            <Button key={value} type="button" variant={amount === String(value) ? "default" : "outline"} onClick={() => onAmountChange(String(value))}>
+              {value.toLocaleString("th-TH")}
+            </Button>
+          ))}
+        </div>
+        <div className="rounded-2xl border bg-background p-4">
+          <label className="text-sm font-medium text-muted-foreground" htmlFor="top-up-amount">จำนวนเงินที่ต้องการเติม</label>
+          <Input id="top-up-amount" className="mt-2 h-12 text-lg font-bold" type="number" min={100} value={amount} onChange={(event) => onAmountChange(event.target.value)} />
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>ยกเลิก</Button>
+          <Button type="button" onClick={onSubmit}>ยืนยันเติมเงิน</Button>
+        </DialogFooter>
+      </div>
     </DialogContent>
   </Dialog>
 );
-
 interface ShopRegistrationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -1229,27 +1244,33 @@ interface ShopRegistrationDialogProps {
 
 const ShopRegistrationDialog = ({ open, onOpenChange, onSubmit }: ShopRegistrationDialogProps) => (
   <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>เธชเธกเธฑเธเธฃเธฃเนเธฒเธเธเนเธฒ</DialogTitle>
-        <DialogDescription>เน€เธเธดเธ”เธฃเนเธฒเธเธเธฒเธขเธเธฒเธฃเนเธ”เนเธฅเธฐเธฃเธฑเธเน€เธเธดเธเธเนเธฒเธเธฃเธฐเธเธเธเธฃเธฐเน€เธเนเธฒเน€เธเธดเธ</DialogDescription>
-      </DialogHeader>
-      <div className="flex flex-col gap-3">
-        <Input defaultValue="CardHunter Shop" aria-label="เธเธทเนเธญเธฃเนเธฒเธ" />
-        <Input defaultValue="@cardhunter" aria-label="เธเนเธญเธเธ—เธฒเธเธ•เธดเธ”เธ•เนเธญ" />
-        <Input placeholder="เธเธเธฒเธเธฒเธฃ / PromptPay" aria-label="เธเธฑเธเธเธตเธฃเธฑเธเน€เธเธดเธ" />
-        <label className="flex items-start gap-2 text-sm text-muted-foreground">
-          <Checkbox defaultChecked />
-          เธขเธญเธกเธฃเธฑเธเน€เธเธทเนเธญเธเนเธเธฃเนเธฒเธเธเนเธฒเนเธฅเธฐเธเนเธฒเธเธฃเธฃเธกเน€เธเธตเธขเธกเนเธเธฅเธ•เธเธญเธฃเนเธก
-        </label>
+    <DialogContent className="overflow-hidden p-0 sm:max-w-xl">
+      <div className="border-b bg-muted/40 p-6">
+        <DialogHeader className="text-left">
+          <div className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+            <Building2 className="size-5" />
+          </div>
+          <DialogTitle className="text-2xl">สมัครร้านค้า</DialogTitle>
+          <DialogDescription>เปิดร้านขายการ์ด รับออเดอร์ และจัดการประมูลผ่านระบบ marketplace</DialogDescription>
+        </DialogHeader>
       </div>
-      <DialogFooter>
-        <Button type="button" onClick={onSubmit}>เธชเนเธเธเธณเธเธญเธชเธกเธฑเธเธฃเธฃเนเธฒเธเธเนเธฒ</Button>
-      </DialogFooter>
+      <div className="grid gap-4 p-6">
+        <div className="grid gap-3">
+          <Input defaultValue="CardHunter Shop" aria-label="ชื่อร้าน" />
+          <Input defaultValue="LINE: @cardhunter" aria-label="ช่องทางติดต่อ" />
+          <Input defaultValue="ธนาคารตัวอย่าง 123-456" aria-label="บัญชีรับเงิน" />
+        </div>
+        <div className="rounded-2xl border bg-muted/40 p-4 text-sm text-muted-foreground">
+          ระบบจะส่งคำขอให้แอดมินตรวจสอบก่อนเปิดขายจริง ร้านค้าที่อนุมัติแล้วจะลงขายและลงประมูลได้ทันที
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>ยกเลิก</Button>
+          <Button type="button" onClick={onSubmit}>ส่งคำขอ</Button>
+        </DialogFooter>
+      </div>
     </DialogContent>
   </Dialog>
 );
-
 interface ListingSheetProps {
   open: boolean;
   mode: ListingMode;
@@ -1260,10 +1281,10 @@ interface ListingSheetProps {
 
 const ListingSheet = ({ open, mode, onModeChange, onOpenChange, onSubmit }: ListingSheetProps) => (
   <Sheet open={open} onOpenChange={onOpenChange}>
-    <SheetContent className="w-full overflow-auto p-0 sm:max-w-[560px] lg:max-w-[680px]">
-      <SheetHeader className="border-b px-5 py-4">
-        <SheetTitle>เธฅเธเธชเธดเธเธเนเธฒ</SheetTitle>
-        <SheetDescription>เธชเธฃเนเธฒเธเธฃเธฒเธขเธเธฒเธฃเธเธฒเธขเธซเธฃเธทเธญเธเธฃเธฐเธกเธนเธฅเนเธเธ 3 เธเธฑเนเธเธ•เธญเธ</SheetDescription>
+    <SheetContent className="w-full overflow-auto rounded-l-3xl p-0 sm:max-w-[560px] lg:max-w-[680px]">
+      <SheetHeader className="border-b bg-muted/40 px-6 py-5">
+        <SheetTitle className="text-2xl">ลงสินค้า</SheetTitle>
+        <SheetDescription>สร้างรายการขายหรือประมูลแบบเป็นขั้นตอน ตรวจข้อมูลก่อนเผยแพร่</SheetDescription>
       </SheetHeader>
       <form action={onSubmit} className="flex flex-col gap-5 p-5">
         <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">

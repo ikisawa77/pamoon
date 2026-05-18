@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
-import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import {
   ChevronRight,
   Clock3,
@@ -21,11 +21,12 @@ import {
   Trophy,
   X,
 } from "lucide-react";
+import { AppFooter } from "@/components/shared/AppFooter";
+import { SimpleAppHeader } from "@/components/shared/SimpleAppHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { NotificationBell } from "@/components/shared/NotificationBell";
-import { richTextToPlainText, sanitizeRichText } from "@/lib/richtext";
+import { richTextToPlainText } from "@/lib/richtext";
 import { cn } from "@/lib/utils";
 
 interface HomeContentItem {
@@ -40,7 +41,7 @@ interface HomeContentItem {
   sortOrder: number;
 }
 
-interface HomeProductItem {
+interface HomeProduct {
   id: string;
   title: string;
   cardCode: string;
@@ -57,7 +58,7 @@ interface HomeProductItem {
   };
 }
 
-interface HomeShopItem {
+interface RecommendedShop {
   id: string;
   name: string;
   slug: string;
@@ -70,11 +71,13 @@ interface HomeShopItem {
 
 interface HomepageExperienceProps {
   contents: HomeContentItem[];
-  endingAuctions: HomeProductItem[];
-  latestAuctions: HomeProductItem[];
-  latestSales: HomeProductItem[];
-  recommendedShops: HomeShopItem[];
+  endingAuctions: HomeProduct[];
+  latestAuctions: HomeProduct[];
+  latestSales: HomeProduct[];
+  recommendedShops: RecommendedShop[];
   viewerName: string;
+  viewerRole: string;
+  isAuthenticated: boolean;
 }
 
 type DockFilter = "all" | "auction" | "buy" | "rare" | "shops";
@@ -84,16 +87,14 @@ const moneyFromCents = (value: number) =>
     style: "currency",
     currency: "THB",
     maximumFractionDigits: 0,
-  })
-    .format(value / 100)
-    .replace("THB", "฿");
+  }).format(value / 100);
 
 const contentByType = (contents: HomeContentItem[], type: HomeContentItem["type"]) =>
   contents.filter((content) => content.type === type).sort((left, right) => left.sortOrder - right.sortOrder);
 
 const formatEndsAt = (value: string | null) => {
   if (!value) {
-    return "รอกำหนดเวลา";
+    return "เธฃเธญเธเธณเธซเธเธ”เน€เธงเธฅเธฒ";
   }
 
   return new Intl.DateTimeFormat("th-TH", {
@@ -102,6 +103,14 @@ const formatEndsAt = (value: string | null) => {
   }).format(new Date(value));
 };
 
+const dockItems: Array<{ value: DockFilter; label: string; icon: LucideIcon }> = [
+  { value: "all", label: "เธ—เธฑเนเธเธซเธกเธ”", icon: Home },
+  { value: "auction", label: "เธเธฃเธฐเธกเธนเธฅ", icon: Trophy },
+  { value: "buy", label: "เธเธทเนเธญเน€เธฅเธข", icon: CreditCard },
+  { value: "rare", label: "เธซเธฒเธขเธฒเธ", icon: Gem },
+  { value: "shops", label: "เธฃเนเธฒเธเธเนเธฒ", icon: Store },
+];
+
 const HomepageExperience = ({
   contents,
   endingAuctions,
@@ -109,6 +118,8 @@ const HomepageExperience = ({
   latestSales,
   recommendedShops,
   viewerName,
+  viewerRole,
+  isAuthenticated,
 }: HomepageExperienceProps) => {
   const slides = contentByType(contents, "SLIDE");
   const promotions = contentByType(contents, "PROMOTION");
@@ -141,88 +152,64 @@ const HomepageExperience = ({
 
   const dockRailTitle =
     activeFilter === "auction"
-      ? "ประมูลจากตัวกรอง"
+      ? "เธเธฃเธฐเธกเธนเธฅเธเธฒเธเธ•เธฑเธงเธเธฃเธญเธ"
       : activeFilter === "rare"
-        ? "การ์ดหายากจากตัวกรอง"
+        ? "เธเธฒเธฃเนเธ”เธซเธฒเธขเธฒเธเธเธฒเธเธ•เธฑเธงเธเธฃเธญเธ"
         : activeFilter === "shops"
-          ? "สินค้าตามร้านค้าที่ค้นหา"
-          : "ลงขายล่าสุด";
-
-  const dockItems: Array<{ value: DockFilter; label: string; icon: LucideIcon }> = [
-    { value: "all", label: "ทั้งหมด", icon: Home },
-    { value: "auction", label: "ประมูล", icon: Trophy },
-    { value: "buy", label: "ซื้อเลย", icon: CreditCard },
-    { value: "rare", label: "หายาก", icon: Gem },
-    { value: "shops", label: "ร้านค้า", icon: Store },
-  ];
+          ? "เธชเธดเธเธเนเธฒเธ•เธฒเธกเธฃเนเธฒเธเธเนเธฒเธ—เธตเนเธเนเธเธซเธฒ"
+          : "เธฅเธเธเธฒเธขเธฅเนเธฒเธชเธธเธ”";
 
   return (
-    <div className="min-h-screen bg-[#f7f7f4] text-foreground">
-      <header className="sticky top-0 z-40 border-b bg-background/90 px-4 py-3 shadow-sm backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex size-10 rotate-[-8deg] items-center justify-center rounded-md bg-primary text-primary-foreground shadow-lg shadow-primary/20">
-              ★
-            </div>
-            <div className="text-2xl font-bold tracking-tight">
-              <span>BidCard</span> <span className="text-primary">TH</span>
-            </div>
-          </Link>
-          <nav className="hidden items-center gap-2 lg:flex">
-            <Button asChild variant="ghost"><Link href="/auctions">ประมูล</Link></Button>
-            <Button asChild variant="ghost"><Link href="/buy-now">ซื้อเลย</Link></Button>
-            <Button asChild variant="ghost"><Link href="/shops">ร้านค้า</Link></Button>
-            <Button asChild variant="ghost"><Link href="/collection">รายการโปรด</Link></Button>
-          </nav>
-          <div className="flex items-center gap-2">
-            <Button asChild variant="outline" className="hidden sm:inline-flex">
-              <Link href="/account">{viewerName}</Link>
-            </Button>
-            <NotificationBell />
-          </div>
-        </div>
-      </header>
+    <div className="retro-shell min-h-screen text-foreground">
+      <SimpleAppHeader user={isAuthenticated ? { displayName: viewerName, role: viewerRole } : null} />
 
       <main>
         <section className="relative isolate overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_10%,rgba(215,38,49,0.18),transparent_32%),linear-gradient(135deg,#12151c,#2b303a_52%,#f1eee7_52%)]" />
-          <div className="relative mx-auto grid min-h-[calc(100svh-68px)] max-w-7xl gap-8 px-4 py-10 lg:grid-cols-[minmax(0,1fr)_460px] lg:items-center">
-            <div className="max-w-2xl text-white">
-              <Badge className="mb-5 bg-white text-foreground">{heroSlide?.badge ?? "Marketplace"}</Badge>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_12%,rgba(0,217,255,0.28),transparent_30%),radial-gradient(circle_at_8%_70%,rgba(225,29,72,0.24),transparent_28%)]" />
+          <div className="relative mx-auto grid min-h-[calc(100svh-68px)] max-w-7xl gap-8 px-4 py-10 lg:grid-cols-[minmax(0,1fr)_480px] lg:items-center">
+            <div className="max-w-2xl">
+              <Badge className="mb-5 bg-white text-slate-950">{heroSlide?.badge ?? "Retro Marketplace"}</Badge>
               <h1 className="text-5xl font-black leading-none tracking-normal sm:text-7xl">
                 {heroSlide?.title ?? "BidCard TH"}
               </h1>
-              <p className="mt-5 max-w-xl text-lg text-white/82">
-                {heroSlide?.subtitle ?? "ตลาดประมูลและซื้อขายการ์ดที่เชื่อมสมาชิก ร้านค้า และหลังบ้านเข้าด้วยกัน"}
+              <p className="mt-5 max-w-xl text-lg leading-8 text-muted-foreground">
+                {heroSlide?.subtitle ?? "เธ•เธฅเธฒเธ”เธเธฃเธฐเธกเธนเธฅเนเธฅเธฐเธเธทเนเธญเธเธฒเธขเธเธฒเธฃเนเธ”เธ—เธตเนเน€เธเธทเนเธญเธกเธชเธกเธฒเธเธดเธ Reseller เธเธฃเธฐเน€เธเนเธฒเน€เธเธดเธ เนเธเนเธเน€เธ•เธทเธญเธ เนเธฅเธฐเธฃเธฐเธเธเธซเธฅเธฑเธเธเนเธฒเธเนเธงเนเนเธเธเธฃเธฐเธชเธเธเธฒเธฃเธ“เนเน€เธ”เธตเธขเธง"}
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
-                <Button asChild size="lg" className="bg-primary text-primary-foreground">
+                <Button asChild size="lg" className="shadow-lg shadow-primary/25">
                   <Link href={heroSlide?.href ?? "/auctions"}>
-                    เริ่มดูประมูล <ChevronRight data-icon="inline-end" />
+                    เน€เธฃเธดเนเธกเธเธฃเธฐเธกเธนเธฅ <ChevronRight data-icon="inline-end" />
                   </Link>
                 </Button>
                 <Button asChild size="lg" variant="secondary">
-                  <Link href="/seller/register">เปิดร้านค้า</Link>
+                  <Link href="/buy-now">เธเธทเนเธญเน€เธฅเธข</Link>
+                </Button>
+                <Button asChild size="lg" variant="outline">
+                  <Link href="/register">เธชเธกเธฑเธเธฃ Reseller</Link>
                 </Button>
               </div>
-              <div className="mt-10 grid max-w-xl grid-cols-3 gap-4 border-t border-white/20 pt-5 text-sm text-white/80">
-                <span><strong className="block text-2xl text-white">{endingAuctions.length}</strong>ใกล้หมดเวลา</span>
-                <span><strong className="block text-2xl text-white">{latestSales.length}</strong>ลงขายล่าสุด</span>
-                <span><strong className="block text-2xl text-white">{recommendedShops.length}</strong>ร้านแนะนำ</span>
+              <div className="mt-10 grid max-w-xl grid-cols-3 gap-4 border-t border-white/10 pt-5 text-sm text-muted-foreground">
+                <span><strong className="block text-2xl text-foreground">{endingAuctions.length}</strong>เนเธเธฅเนเธซเธกเธ”เน€เธงเธฅเธฒ</span>
+                <span><strong className="block text-2xl text-foreground">{latestSales.length}</strong>เธฅเธเธเธฒเธขเธฅเนเธฒเธชเธธเธ”</span>
+                <span><strong className="block text-2xl text-foreground">{recommendedShops.length}</strong>เธฃเนเธฒเธเนเธเธฐเธเธณ</span>
               </div>
             </div>
 
             <div className="relative">
-              <div className="product-art object-pos-2 relative aspect-[3/4] overflow-hidden rounded-[28px] border border-white/20 bg-muted shadow-2xl">
-                {heroSlide?.imageUrl ? <Image src={heroSlide.imageUrl} alt={heroSlide.title} fill sizes="(min-width: 1024px) 460px, 100vw" className="object-cover" priority /> : null}
+              <div className="holo-card neon-border relative aspect-[3/4] overflow-hidden rounded-[30px] border border-white/10 shadow-2xl">
+                {heroSlide?.imageUrl ? (
+                  <Image src={heroSlide.imageUrl} alt={heroSlide.title} fill sizes="(min-width: 1024px) 480px, 100vw" className="object-cover mix-blend-screen opacity-90" priority />
+                ) : (
+                  <div className="product-art object-pos-2 h-full w-full opacity-80" />
+                )}
               </div>
-              <div className="absolute -bottom-5 left-4 right-4 rounded-2xl bg-background/95 p-4 shadow-xl backdrop-blur">
+              <div className="neon-panel absolute -bottom-5 left-4 right-4 rounded-2xl p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <span className="text-xs text-muted-foreground">ประมูลเด่น</span>
+                  <div className="min-w-0">
+                    <span className="text-xs text-muted-foreground">เธเธฃเธฐเธกเธนเธฅเน€เธ”เนเธ</span>
                     <strong className="block truncate">{endingAuctions[0]?.title ?? "Rare Card Auction"}</strong>
                   </div>
-                  <strong className="text-primary">{moneyFromCents(endingAuctions[0]?.currentPriceCents ?? 0)}</strong>
+                  <strong className="text-bid">{moneyFromCents(endingAuctions[0]?.currentPriceCents ?? 0)}</strong>
                 </div>
               </div>
             </div>
@@ -233,8 +220,8 @@ const HomepageExperience = ({
                   <button
                     key={slide.id}
                     type="button"
-                    className={cn("h-2.5 rounded-full bg-white/50 transition-all", index === activeSlide ? "w-10 bg-white" : "w-2.5")}
-                    aria-label={`เปิดสไลด์ ${index + 1}`}
+                    className={cn("h-2.5 rounded-full bg-white/30 transition-all", index === activeSlide ? "w-10 bg-white" : "w-2.5")}
+                    aria-label={`เน€เธเธดเธ”เธชเนเธฅเธ”เน ${index + 1}`}
                     onClick={() => setActiveSlide(index)}
                   />
                 ))}
@@ -246,38 +233,38 @@ const HomepageExperience = ({
         <section className="mx-auto grid max-w-7xl gap-8 px-4 py-10 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0 space-y-12">
             <PromoStrip promotions={promotions} />
-            <ProductRail title="ประมูลใกล้จะหมดเวลา" icon={Clock3} products={endingAuctions} href="/auctions" />
+            <ProductRail title="เธเธฃเธฐเธกเธนเธฅเนเธเธฅเนเธซเธกเธ”เน€เธงเธฅเธฒ" icon={Clock3} products={endingAuctions} href="/auctions" />
             <ProductRail title={dockRailTitle} icon={ShoppingBag} products={filteredDockProducts} href={activeFilter === "auction" ? "/auctions" : "/buy-now"} />
-            <ProductRail title="ประมูลล่าสุด" icon={Flame} products={latestAuctions} href="/auctions" />
+            <ProductRail title="เธเธฃเธฐเธกเธนเธฅเธฅเนเธฒเธชเธธเธ”" icon={Flame} products={latestAuctions} href="/auctions" />
             <ArticleSection articles={articles} />
           </div>
 
           <aside className="space-y-6 lg:sticky lg:top-24 lg:h-fit">
-            <section className="rounded-2xl border bg-background p-5 shadow-sm">
+            <section className="neon-panel rounded-2xl p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold">ร้านค้าแนะนำ</h2>
-                  <p className="text-sm text-muted-foreground">แก้ไขรายการเด่นได้ในหลังบ้าน</p>
+                  <h2 className="text-lg font-semibold">เธฃเนเธฒเธเธเนเธฒเนเธเธฐเธเธณ</h2>
+                  <p className="text-sm text-muted-foreground">เธเธฑเธ”เธเธฒเธฃเธฃเธฒเธขเธเธฒเธฃเน€เธ”เนเธเนเธ”เนเธเธฒเธเธซเธฅเธฑเธเธเนเธฒเธ</p>
                 </div>
                 <ShieldCheck className="text-primary" />
               </div>
               <div className="mt-4 space-y-3">
                 {recommendedShops.map((shop) => (
-                  <Link key={shop.id} href={`/shops/${shop.slug}`} className="flex items-center gap-3 rounded-xl border bg-muted/30 p-3 transition hover:bg-muted">
+                  <Link key={shop.id} href={`/shops/${shop.slug}`} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3 transition hover:bg-white/[0.07]">
                     <div className="flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
                       {shop.name.slice(0, 2).toUpperCase()}
                     </div>
                     <div className="min-w-0 flex-1">
                       <strong className="block truncate">{shop.name}</strong>
                       <span className="text-xs text-muted-foreground">
-                        {shop.rating.toFixed(1)} คะแนน · {shop._count.products} รายการ
+                        {shop.rating.toFixed(1)} เธเธฐเนเธเธ / {shop._count.products} เธฃเธฒเธขเธเธฒเธฃ
                       </span>
                     </div>
                   </Link>
                 ))}
                 {featuredShopContents.map((shop) => (
-                  <Link key={shop.id} href={shop.href ?? "/shops"} className="block rounded-xl border bg-background p-3 transition hover:bg-muted">
-                    <Badge variant="outline">{shop.badge ?? "แนะนำ"}</Badge>
+                  <Link key={shop.id} href={shop.href ?? "/shops"} className="block rounded-xl border border-white/10 bg-white/[0.03] p-3 transition hover:bg-white/[0.07]">
+                    <Badge variant="outline">{shop.badge ?? "เนเธเธฐเธเธณ"}</Badge>
                     <strong className="mt-2 block">{shop.title}</strong>
                     <span className="text-sm text-muted-foreground">{shop.subtitle}</span>
                   </Link>
@@ -288,36 +275,15 @@ const HomepageExperience = ({
         </section>
       </main>
 
+      <AppFooter />
       <MacFilterDock
         open={dockOpen}
         activeFilter={activeFilter}
         query={query}
-        dockItems={dockItems}
         onOpenChange={setDockOpen}
         onFilterChange={setActiveFilter}
         onQueryChange={setQuery}
       />
-
-      <footer className="border-t bg-[#151922] px-4 py-10 text-white">
-        <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-[1fr_auto_auto]">
-          <div>
-            <strong className="text-2xl">BidCard TH</strong>
-            <p className="mt-2 max-w-md text-sm text-white/65">
-              ระบบประมูลและซื้อขายการ์ดพร้อม wallet, escrow, SLA, แจ้งเตือน realtime และหลังบ้านสำหรับจัดการหน้าแรก
-            </p>
-          </div>
-          <div className="grid gap-2 text-sm text-white/75">
-            <Link href="/auctions">ประมูล</Link>
-            <Link href="/buy-now">ซื้อเลย</Link>
-            <Link href="/shops">ร้านค้า</Link>
-          </div>
-          <div className="grid gap-2 text-sm text-white/75">
-            <Link href="/help">ช่วยเหลือ</Link>
-            <Link href="/account">บัญชีของฉัน</Link>
-            <Link href="/admin">หลังบ้าน</Link>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };
@@ -325,7 +291,7 @@ const HomepageExperience = ({
 interface ProductRailProps {
   title: string;
   icon: LucideIcon;
-  products: HomeProductItem[];
+  products: HomeProduct[];
   href: string;
 }
 
@@ -333,86 +299,91 @@ const ProductRail = ({ title, icon: Icon, products, href }: ProductRailProps) =>
   <section>
     <div className="mb-4 flex items-center justify-between gap-3">
       <div className="flex items-center gap-2">
-        <Icon className="text-primary" />
-        <h2 className="text-2xl font-bold">{title}</h2>
+        <Icon className="size-5 text-primary" />
+        <h2 className="text-2xl font-black">{title}</h2>
       </div>
       <Button asChild variant="outline" size="sm">
-        <Link href={href}>ดูทั้งหมด</Link>
+        <Link href={href}>เธ”เธนเธ—เธฑเนเธเธซเธกเธ”</Link>
       </Button>
     </div>
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {products.slice(0, 8).map((product, index) => (
-        <Link key={product.id} href={product.mode === "AUCTION" ? "/auctions" : "/buy-now"} className="group overflow-hidden rounded-2xl border bg-background shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-          <div className={cn("product-art relative aspect-[4/3] overflow-hidden bg-muted", `object-pos-${(index % 3) + 1}`)}>
-            {product.imageUrl ? <Image src={product.imageUrl} alt={product.title} fill sizes="(min-width: 1280px) 25vw, (min-width: 640px) 50vw, 100vw" className="object-cover" /> : null}
-          </div>
-          <div className="p-4">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <Badge variant={product.mode === "AUCTION" ? "default" : "secondary"}>{product.mode === "AUCTION" ? "ประมูล" : "ซื้อเลย"}</Badge>
-              <Badge variant="outline">{product.rarity}</Badge>
-            </div>
-            <strong className="line-clamp-1">{product.title}</strong>
-            <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">{product.sellerShop.name}</p>
-            <div className="mt-3 flex items-end justify-between gap-2">
-              <span className="text-lg font-bold text-primary">{moneyFromCents(product.currentPriceCents)}</span>
-              <span className="text-xs text-muted-foreground">{product.mode === "AUCTION" ? formatEndsAt(product.auctionEndsAt) : `${product.watcherCount} views`}</span>
-            </div>
-          </div>
-        </Link>
+        <ProductCard key={product.id} product={product} index={index} />
       ))}
     </div>
   </section>
 );
 
-const PromoStrip = ({ promotions }: { promotions: HomeContentItem[] }) => (
-  <section className="grid gap-4 md:grid-cols-2">
-    {promotions.slice(0, 2).map((promotion) => (
-      <Link key={promotion.id} href={promotion.href ?? "/"} className="group grid min-h-48 overflow-hidden rounded-2xl border bg-background shadow-sm transition hover:-translate-y-1 hover:shadow-lg sm:grid-cols-[1fr_170px]">
-        <div className="p-5">
-          <Badge>{promotion.badge ?? "โปรโมชัน"}</Badge>
-          <h2 className="mt-4 text-2xl font-bold">{promotion.title}</h2>
-          <p className="mt-2 text-sm text-muted-foreground">{promotion.subtitle}</p>
-          <span className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-primary">
-            เปิดดู <ChevronRight data-icon="inline-end" />
+const ProductCard = ({ product, index }: { product: HomeProduct; index: number }) => {
+  const href = product.mode === "AUCTION" ? `/auctions/${product.id}` : `/buy-now/${product.id}`;
+
+  return (
+    <Link href={href} className="neon-panel group overflow-hidden rounded-2xl transition hover:-translate-y-1">
+      <div className={cn("product-art relative aspect-[4/5] overflow-hidden bg-white/5", `object-pos-${(index % 3) + 1}`)}>
+        {product.imageUrl ? (
+          <Image src={product.imageUrl} alt={product.title} fill sizes="(min-width: 1280px) 18vw, 50vw" className="object-cover transition group-hover:scale-105" />
+        ) : null}
+        <Badge className="absolute left-3 top-3">{product.mode === "AUCTION" ? "เธเธฃเธฐเธกเธนเธฅ" : "เธเธทเนเธญเน€เธฅเธข"}</Badge>
+        <Badge variant="secondary" className="absolute right-3 top-3">{product.rarity}</Badge>
+      </div>
+      <div className="p-4">
+        <h3 className="line-clamp-2 font-semibold">{product.title}</h3>
+        <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{product.cardCode} ยท {product.setName}</p>
+        <div className="mt-4 flex items-end justify-between gap-3">
+          <div>
+            <span className="block text-xs text-muted-foreground">{product.mode === "AUCTION" ? "เธฃเธฒเธเธฒเธเธฑเธเธเธธเธเธฑเธ" : "เธฃเธฒเธเธฒ"}</span>
+            <strong className="text-lg text-bid">{moneyFromCents(product.currentPriceCents)}</strong>
+          </div>
+          <span className="text-right text-xs text-muted-foreground">
+            {product.mode === "AUCTION" ? formatEndsAt(product.auctionEndsAt) : product.sellerShop.name}
           </span>
         </div>
-        <div className="product-art object-pos-3 relative min-h-36 overflow-hidden bg-muted">
-          {promotion.imageUrl ? <Image src={promotion.imageUrl} alt={promotion.title} fill sizes="170px" className="object-cover" /> : null}
-        </div>
-      </Link>
-    ))}
-  </section>
-);
+      </div>
+    </Link>
+  );
+};
+
+const PromoStrip = ({ promotions }: { promotions: HomeContentItem[] }) => {
+  const items = promotions.length > 0 ? promotions.slice(0, 3) : [
+    { id: "wallet", title: "เน€เธ•เธดเธกเน€เธเธดเธเธเธฃเนเธญเธกเธเธดเธ”", subtitle: "เธฃเธญเธเธฃเธฑเธ wallet เนเธฅเธฐ escrow เธชเธณเธซเธฃเธฑเธเธเธณเธชเธฑเนเธเธเธทเนเธญ", href: "/account", badge: "Wallet" },
+    { id: "reseller", title: "เน€เธเธดเธ”เธฃเนเธฒเธ Reseller", subtitle: "เธฅเธเธเธฒเธขเนเธฅเธฐเธฅเธเธเธฃเธฐเธกเธนเธฅเนเธ”เนเธเธฒเธเธเธฑเธเธเธตเน€เธ”เธตเธขเธง", href: "/register", badge: "Reseller" },
+    { id: "notify", title: "เนเธเนเธเน€เธ•เธทเธญเธเน€เธฃเธตเธขเธฅเนเธ—เธกเน", subtitle: "เธเธฃเธฐเธ”เธดเนเธเนเธฅเธฐเธญเธตเน€เธกเธฅเธชเธณเธซเธฃเธฑเธ bid, order เนเธฅเธฐ SLA", href: "/notifications", badge: "Realtime" },
+  ] satisfies Array<Pick<HomeContentItem, "id" | "title" | "subtitle" | "href" | "badge">>;
+
+  return (
+    <section className="grid gap-3 md:grid-cols-3">
+      {items.map((promotion) => (
+        <Link key={promotion.id} href={promotion.href ?? "/"} className="neon-panel rounded-2xl p-5 transition hover:-translate-y-1">
+          <Badge variant="outline">{promotion.badge ?? "Promotion"}</Badge>
+          <h2 className="mt-3 text-xl font-bold">{promotion.title}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{promotion.subtitle}</p>
+        </Link>
+      ))}
+    </section>
+  );
+};
 
 const ArticleSection = ({ articles }: { articles: HomeContentItem[] }) => (
   <section>
     <div className="mb-4 flex items-center gap-2">
-      <Newspaper className="text-primary" />
-      <h2 className="text-2xl font-bold">บทความที่น่าสนใจ</h2>
+      <Newspaper className="size-5 text-primary" />
+      <h2 className="text-2xl font-black">เธเธ—เธเธงเธฒเธกเธ—เธตเนเธเนเธฒเธชเธเนเธ</h2>
     </div>
-    <div className="grid gap-4 md:grid-cols-2">
-      {articles.slice(0, 4).map((article) => (
-        <Link key={article.id} href={article.href ?? "/help"} className="overflow-hidden rounded-2xl border bg-background shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-          {article.imageUrl ? (
-            <div className="relative aspect-[16/7] bg-muted">
-              <Image src={article.imageUrl} alt={article.title} fill sizes="(min-width: 768px) 50vw, 100vw" className="object-cover" />
-            </div>
-          ) : null}
-          <div className="p-5">
-            <Badge variant="outline">{article.badge ?? "Article"}</Badge>
-            <h3 className="mt-4 text-xl font-bold">{article.title}</h3>
-            {article.body ? (
-              <div
-                className="mt-2 line-clamp-3 text-sm leading-7 text-muted-foreground [&_a]:text-primary [&_blockquote]:border-l-2 [&_blockquote]:pl-3 [&_strong]:text-foreground"
-                dangerouslySetInnerHTML={{ __html: sanitizeRichText(article.body) }}
-              />
-            ) : (
-              <p className="mt-2 text-sm text-muted-foreground">{article.subtitle}</p>
-            )}
-            <span className="sr-only">{richTextToPlainText(article.body ?? article.subtitle)}</span>
-          </div>
+    <div className="grid gap-4 md:grid-cols-3">
+      {(articles.length > 0 ? articles.slice(0, 3) : []).map((article) => (
+        <Link key={article.id} href={article.href ?? "#"} className="neon-panel rounded-2xl p-5 transition hover:-translate-y-1">
+          <Badge variant="outline">{article.badge ?? "Guide"}</Badge>
+          <h3 className="mt-3 line-clamp-2 text-lg font-bold">{article.title}</h3>
+          <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">
+            {article.subtitle ?? richTextToPlainText(article.body ?? "").slice(0, 140)}
+          </p>
         </Link>
       ))}
+      {articles.length === 0 ? (
+        <div className="neon-panel rounded-2xl p-5 md:col-span-3">
+          <p className="text-sm text-muted-foreground">เธขเธฑเธเนเธกเนเธกเธตเธเธ—เธเธงเธฒเธกเน€เธ”เนเธ เธเธนเนเธ”เธนเนเธฅเธชเธฒเธกเธฒเธฃเธ–เน€เธเธดเนเธกเธเธ—เธเธงเธฒเธกเธเธฒเธเธซเธฅเธฑเธเธเนเธฒเธเนเธ”เน</p>
+        </div>
+      ) : null}
     </div>
   </section>
 );
@@ -421,16 +392,15 @@ interface MacFilterDockProps {
   open: boolean;
   activeFilter: DockFilter;
   query: string;
-  dockItems: Array<{ value: DockFilter; label: string; icon: LucideIcon }>;
   onOpenChange: (open: boolean) => void;
   onFilterChange: (filter: DockFilter) => void;
   onQueryChange: (query: string) => void;
 }
 
-const MacFilterDock = ({ open, activeFilter, query, dockItems, onOpenChange, onFilterChange, onQueryChange }: MacFilterDockProps) => (
+const MacFilterDock = ({ open, activeFilter, query, onOpenChange, onFilterChange, onQueryChange }: MacFilterDockProps) => (
   <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 lg:left-5 lg:top-1/2 lg:translate-x-0 lg:-translate-y-1/2">
-    <div className={cn("flex items-end gap-2 rounded-3xl border bg-background/90 p-2 shadow-2xl backdrop-blur transition-all lg:flex-col", open && "items-stretch p-3")}>
-      <Button type="button" size="icon" className="rounded-2xl" onClick={() => onOpenChange(!open)} aria-label="เปิดตัวกรอง">
+    <div className={cn("neon-panel flex items-end gap-2 rounded-3xl p-2 transition-all lg:flex-col", open && "items-stretch p-3")}>
+      <Button type="button" size="icon" className="rounded-2xl" onClick={() => onOpenChange(!open)} aria-label="เน€เธเธดเธ”เธ•เธฑเธงเธเธฃเธญเธ">
         {open ? <X /> : <SlidersHorizontal />}
       </Button>
       {dockItems.map((item) => (
@@ -438,7 +408,7 @@ const MacFilterDock = ({ open, activeFilter, query, dockItems, onOpenChange, onF
           key={item.value}
           type="button"
           className={cn(
-            "group flex items-center justify-center gap-2 rounded-2xl border bg-background px-3 py-3 text-sm shadow-sm transition-all hover:-translate-y-2 hover:scale-110 lg:hover:translate-x-2 lg:hover:translate-y-0",
+            "group flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3 text-sm shadow-sm transition-all hover:-translate-y-2 hover:scale-110 lg:hover:translate-x-2 lg:hover:translate-y-0",
             activeFilter === item.value && "bg-primary text-primary-foreground",
             open ? "w-44 justify-start" : "size-12 px-0",
           )}
@@ -451,10 +421,10 @@ const MacFilterDock = ({ open, activeFilter, query, dockItems, onOpenChange, onF
       {open ? (
         <div className="relative w-56 lg:w-64">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={query} onChange={(event) => onQueryChange(event.target.value)} className="pl-9" placeholder="ค้นหาการ์ด/ร้านค้า" />
+          <Input value={query} onChange={(event) => onQueryChange(event.target.value)} className="pl-9" placeholder="เธเนเธเธซเธฒเธเธฒเธฃเนเธ”/เธฃเนเธฒเธเธเนเธฒ" />
         </div>
       ) : (
-        <div className="flex size-12 items-center justify-center rounded-2xl border bg-background text-muted-foreground">
+        <div className="flex size-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-muted-foreground">
           <Filter className="size-5" />
         </div>
       )}
@@ -463,3 +433,5 @@ const MacFilterDock = ({ open, activeFilter, query, dockItems, onOpenChange, onF
 );
 
 export { HomepageExperience };
+
+

@@ -80,6 +80,8 @@ const HomePage = async () => {
         _count: shop._count,
       }))}
       viewerName={viewer?.displayName ?? "เข้าสู่ระบบ"}
+      viewerRole={viewer?.role ?? "GUEST"}
+      isAuthenticated={Boolean(viewer)}
     />
   );
 };

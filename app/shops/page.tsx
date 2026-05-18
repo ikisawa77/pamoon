@@ -1,20 +1,20 @@
-import Image from "next/image";
+﻿import Image from "next/image";
 import Link from "next/link";
 import { Package, Star, Store, Trophy, type LucideIcon } from "lucide-react";
+import { AppFooter } from "@/components/shared/AppFooter";
+import { SimpleAppHeader } from "@/components/shared/SimpleAppHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AppFooter } from "@/components/shared/AppFooter";
-import { NotificationBell } from "@/components/shared/NotificationBell";
 import { getViewerSummary } from "@/lib/auth/viewer";
 import { prisma } from "@/lib/db/prisma";
 
 export const dynamic = "force-dynamic";
 
 const statusLabel = {
-  APPROVED: "เปิดขายอยู่",
-  PENDING: "รอตรวจสอบ",
-  REJECTED: "ไม่อนุมัติ",
-  SUSPENDED: "ระงับชั่วคราว",
+  APPROVED: "เน€เธเธดเธ”เธเธฒเธขเธญเธขเธนเน",
+  PENDING: "เธฃเธญเธ•เธฃเธงเธเธชเธญเธ",
+  REJECTED: "เนเธกเนเธญเธเธธเธกเธฑเธ•เธด",
+  SUSPENDED: "เธฃเธฐเธเธฑเธเธเธฑเนเธงเธเธฃเธฒเธง",
 } as const;
 
 const ShopsPage = async () => {
@@ -23,11 +23,7 @@ const ShopsPage = async () => {
     where: { status: "APPROVED" },
     orderBy: [{ rating: "desc" }, { reviewCount: "desc" }, { createdAt: "desc" }],
     include: {
-      owner: {
-        select: {
-          displayName: true,
-        },
-      },
+      owner: { select: { displayName: true } },
       products: {
         where: { status: "ACTIVE" },
         orderBy: { createdAt: "desc" },
@@ -40,91 +36,74 @@ const ShopsPage = async () => {
           rarity: true,
         },
       },
-      _count: {
-        select: {
-          products: true,
-          orders: true,
-        },
-      },
+      _count: { select: { products: true, orders: true } },
     },
   });
 
   return (
-    <div className="min-h-screen bg-[#f6f6f2] text-foreground">
-      <header className="sticky top-0 z-40 border-b bg-background/90 px-4 py-3 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex size-10 rotate-[-8deg] items-center justify-center rounded-md bg-primary text-primary-foreground">★</div>
-            <strong className="text-xl">BidCard TH</strong>
-          </Link>
-          <nav className="hidden items-center gap-2 md:flex">
-            <Button asChild variant="ghost"><Link href="/auctions">ประมูล</Link></Button>
-            <Button asChild variant="ghost"><Link href="/buy-now">ซื้อเลย</Link></Button>
-            <Button asChild variant="secondary"><Link href="/shops">ร้านค้า</Link></Button>
-            <Button asChild variant="ghost"><Link href="/collection">รายการโปรด</Link></Button>
-          </nav>
-          <div className="flex items-center gap-2">
-            <Button asChild variant="outline" className="hidden sm:inline-flex">
-              <Link href="/account">{viewer?.displayName ?? "เข้าสู่ระบบ"}</Link>
-            </Button>
-            <NotificationBell />
-          </div>
-        </div>
-      </header>
+    <div className="retro-shell min-h-screen text-foreground">
+      <SimpleAppHeader user={viewer} />
 
       <main className="mx-auto max-w-7xl px-4 py-8">
-        <section className="grid gap-6 border-b pb-8 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-end">
+        <section className="neon-panel grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-end">
           <div>
-            <Badge className="mb-4">Verified Shops</Badge>
-            <h1 className="max-w-3xl text-4xl font-black leading-tight sm:text-6xl">ร้านค้าการ์ดที่ผ่านการตรวจสอบ</h1>
+            <Badge className="mb-4">Verified Resellers</Badge>
+            <h1 className="max-w-3xl text-4xl font-black leading-tight sm:text-6xl">เธฃเนเธฒเธเธเธฒเธฃเนเธ”เธ—เธตเนเธเนเธฒเธเธเธฒเธฃเธ•เธฃเธงเธเธชเธญเธ</h1>
             <p className="mt-4 max-w-2xl text-muted-foreground">
-              เลือกร้านค้า ดูคะแนน รีวิว จำนวนสินค้า และรายการล่าสุดก่อนซื้อหรือเข้าร่วมประมูล
+              เน€เธฅเธทเธญเธเธฃเนเธฒเธเธเนเธฒ เธ”เธนเธเธฐเนเธเธ เธฃเธตเธงเธดเธง เธเธณเธเธงเธเธชเธดเธเธเนเธฒ เนเธฅเธฐเธฃเธฒเธขเธเธฒเธฃเธฅเนเธฒเธชเธธเธ”เธเนเธญเธเธเธทเนเธญเธซเธฃเธทเธญเน€เธเนเธฒเธฃเนเธงเธกเธเธฃเธฐเธกเธนเธฅ
             </p>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <Metric icon={Store} label="ร้านค้า" value={shops.length.toLocaleString("th-TH")} />
-            <Metric icon={Package} label="สินค้า" value={shops.reduce((sum, shop) => sum + shop._count.products, 0).toLocaleString("th-TH")} />
-            <Metric icon={Trophy} label="คำสั่งซื้อ" value={shops.reduce((sum, shop) => sum + shop._count.orders, 0).toLocaleString("th-TH")} />
+            <Metric icon={Store} label="เธฃเนเธฒเธเธเนเธฒ" value={shops.length.toLocaleString("th-TH")} />
+            <Metric icon={Package} label="เธชเธดเธเธเนเธฒ" value={shops.reduce((sum, shop) => sum + shop._count.products, 0).toLocaleString("th-TH")} />
+            <Metric icon={Trophy} label="เธเธณเธชเธฑเนเธเธเธทเนเธญ" value={shops.reduce((sum, shop) => sum + shop._count.orders, 0).toLocaleString("th-TH")} />
           </div>
         </section>
 
         <section className="mt-8 grid gap-5 lg:grid-cols-2">
           {shops.map((shop) => (
-            <article key={shop.id} className="overflow-hidden rounded-2xl border bg-background shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+            <article key={shop.id} className="neon-panel overflow-hidden rounded-2xl transition hover:-translate-y-1">
               <div className="grid gap-5 p-5 md:grid-cols-[minmax(0,1fr)_220px]">
                 <div className="min-w-0">
                   <div className="mb-4 flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <Badge>{statusLabel[shop.status]}</Badge>
                       <h2 className="mt-3 truncate text-2xl font-bold">{shop.name}</h2>
-                      <p className="text-sm text-muted-foreground">ดูแลโดย {shop.owner.displayName}</p>
+                      <p className="text-sm text-muted-foreground">เธ”เธนเนเธฅเนเธ”เธข {shop.owner.displayName}</p>
                     </div>
                     <div className="text-right">
-                      <span className="inline-flex items-center gap-1 font-semibold text-primary"><Star className="size-4 fill-current" />{shop.rating.toFixed(1)}</span>
-                      <p className="text-xs text-muted-foreground">{shop.reviewCount.toLocaleString("th-TH")} รีวิว</p>
+                      <span className="inline-flex items-center gap-1 font-semibold text-primary">
+                        <Star className="size-4 fill-current" />
+                        {shop.rating.toFixed(1)}
+                      </span>
+                      <p className="text-xs text-muted-foreground">{shop.reviewCount.toLocaleString("th-TH")} เธฃเธตเธงเธดเธง</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-sm">
-                    <span className="rounded-xl bg-muted/50 p-3"><strong className="block text-lg">{shop._count.products}</strong>สินค้า</span>
-                    <span className="rounded-xl bg-muted/50 p-3"><strong className="block text-lg">{shop._count.orders}</strong>คำสั่งซื้อ</span>
-                    <span className="rounded-xl bg-muted/50 p-3"><strong className="block text-lg">{shop.slug}</strong>รหัสร้าน</span>
+                    <span className="rounded-xl bg-white/5 p-3"><strong className="block text-lg">{shop._count.products}</strong>เธชเธดเธเธเนเธฒ</span>
+                    <span className="rounded-xl bg-white/5 p-3"><strong className="block text-lg">{shop._count.orders}</strong>เธเธณเธชเธฑเนเธเธเธทเนเธญ</span>
+                    <span className="rounded-xl bg-white/5 p-3"><strong className="block truncate text-lg">{shop.slug}</strong>เธฃเธซเธฑเธชเธฃเนเธฒเธ</span>
                   </div>
                   <Button asChild className="mt-5">
-                    <Link href={`/shops/${shop.slug}`}>เปิดหน้าร้าน</Link>
+                    <Link href={`/shops/${shop.slug}`}>เน€เธเธดเธ”เธซเธเนเธฒเธฃเนเธฒเธ</Link>
                   </Button>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   {shop.products.length > 0 ? (
                     shop.products.map((product) => (
-                      <div key={product.id} className="product-art relative aspect-[100/140] overflow-hidden rounded-xl bg-muted">
+                      <Link
+                        key={product.id}
+                        href={product.mode === "AUCTION" ? `/auctions/${product.id}` : `/buy-now/${product.id}`}
+                        className="product-art relative aspect-[100/140] overflow-hidden rounded-xl bg-white/5"
+                      >
                         {product.imageUrl ? <Image src={product.imageUrl} alt={product.title} fill sizes="110px" className="object-cover" /> : null}
                         <Badge className="absolute bottom-2 left-2 text-[10px]" variant={product.mode === "AUCTION" ? "default" : "secondary"}>
                           {product.rarity}
                         </Badge>
-                      </div>
+                      </Link>
                     ))
                   ) : (
-                    <div className="col-span-2 flex min-h-52 items-center justify-center rounded-xl bg-muted text-sm text-muted-foreground">ยังไม่มีสินค้าที่เปิดขาย</div>
+                    <div className="col-span-2 flex min-h-52 items-center justify-center rounded-xl bg-white/5 text-sm text-muted-foreground">เธขเธฑเธเนเธกเนเธกเธตเธชเธดเธเธเนเธฒเธ—เธตเนเน€เธเธดเธ”เธเธฒเธข</div>
                   )}
                 </div>
               </div>
@@ -144,7 +123,7 @@ interface MetricProps {
 }
 
 const Metric = ({ icon: Icon, label, value }: MetricProps) => (
-  <div className="rounded-2xl border bg-background p-4">
+  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
     <Icon className="mb-3 text-primary" />
     <strong className="block text-2xl">{value}</strong>
     <span className="text-sm text-muted-foreground">{label}</span>
@@ -152,3 +131,5 @@ const Metric = ({ icon: Icon, label, value }: MetricProps) => (
 );
 
 export default ShopsPage;
+
+

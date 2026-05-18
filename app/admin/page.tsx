@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
+import { AppFooter } from "@/components/shared/AppFooter";
 import { AdminDashboardClient } from "@/components/shared/AdminDashboardClient";
-import { LogoutButton } from "@/components/shared/LogoutButton";
+import { SimpleAppHeader } from "@/components/shared/SimpleAppHeader";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { prisma } from "@/lib/db/prisma";
 
@@ -120,148 +121,142 @@ const AdminPage = async () => {
 
   const stats = [
     { label: "สมาชิก", value: userCount.toLocaleString("th-TH"), detail: "บัญชีทั้งหมดในระบบ" },
-    { label: "ร้านค้า", value: shopCount.toLocaleString("th-TH"), detail: "ร้านที่สมัครและร้านทดสอบ" },
+    { label: "ร้านค้า", value: shopCount.toLocaleString("th-TH"), detail: "ร้านที่สมัครและร้านสำหรับทดสอบ" },
     { label: "สินค้า", value: productCount.toLocaleString("th-TH"), detail: "รวมประมูลและซื้อเลย" },
     { label: "ประมูล", value: auctionCount.toLocaleString("th-TH"), detail: "รายการประมูลทั้งหมด" },
-    { label: "คำสั่งซื้อ", value: orderCount.toLocaleString("th-TH"), detail: "order ในระบบ" },
-    { label: "ธุรกรรมเงิน", value: walletCount.toLocaleString("th-TH"), detail: "wallet transaction" },
+    { label: "คำสั่งซื้อ", value: orderCount.toLocaleString("th-TH"), detail: "Order ที่สร้างในระบบ" },
+    { label: "ธุรกรรมเงิน", value: walletCount.toLocaleString("th-TH"), detail: "Wallet transaction ทั้งหมด" },
   ];
 
   return (
-    <main className="min-h-screen bg-muted/30">
-      <header className="border-b bg-background">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-5 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground">Pamoon Admin</p>
-            <h1 className="text-2xl font-bold">แดชบอร์ดหลังบ้าน</h1>
-            <p className="text-sm text-muted-foreground">เข้าสู่ระบบโดย {user.email}</p>
-          </div>
-          <LogoutButton />
-        </div>
-      </header>
-      <AdminDashboardClient
-        stats={stats}
-        homeContents={homeContents.map((content) => ({
-          id: content.id,
-          type: content.type,
-          title: content.title,
-          subtitle: content.subtitle,
-          body: content.body,
-          href: content.href,
-          imageUrl: content.imageUrl,
-          badge: content.badge,
-          sortOrder: content.sortOrder,
-          isActive: content.isActive,
-        }))}
-        cardSets={cardSets.map((set) => {
-          const counts = productCountsBySet.get(set.category) ?? { productCount: 0, auctionCount: 0, buyCount: 0 };
-          return {
-            id: set.id,
-            gameName: set.game.name,
-            category: set.category,
-            setCode: set.setCode,
-            setName: set.setName,
-            label: set.label,
-            isActive: set.isActive,
-            sortOrder: set.sortOrder,
-            ...counts,
-          };
-        })}
-        products={products.map((product) => ({
-          id: product.id,
-          title: product.title,
-          cardCode: product.cardCode,
-          setName: product.setName,
-          seller: product.sellerShop.name,
-          mode: product.mode,
-          status: product.status,
-          rarity: product.rarity,
-          currentPriceCents: product.currentPriceCents,
-          auctionEndsAt: product.auctionEndsAt?.toISOString() ?? null,
-          bidCount: product._count.bids,
-          favoriteCount: product._count.favorites,
-        }))}
-        orders={orders.map((order) => ({
-          id: order.id,
-          productTitle: order.product.title,
-          buyerEmail: order.buyer.email,
-          seller: order.sellerShop.name,
-          source: order.source,
-          status: order.status,
-          amountCents: order.amountCents,
-          paymentDueAt: order.paymentDueAt?.toISOString() ?? null,
-          shipDueAt: order.shipDueAt?.toISOString() ?? null,
-          refundDueAt: order.refundDueAt?.toISOString() ?? null,
-          trackingNumber: order.trackingNumber,
-        }))}
-        shops={shops.map((shop) => ({
-          id: shop.id,
-          name: shop.name,
-          ownerEmail: shop.owner.email,
-          status: shop.status,
-          productCount: shop._count.products,
-          orderCount: shop._count.orders,
-          moderationCount: shop._count.moderationCases,
-        }))}
-        users={users.map((account) => ({
-          id: account.id,
-          email: account.email,
-          displayName: account.displayName,
-          role: account.role,
-          status: account.status,
-          walletBalanceCents: account.walletBalanceCents,
-          bidLimitCents: account.bidLimitCents,
-          orderCount: account._count.orders,
-          bidCount: account._count.bids,
-        }))}
-        notifications={notifications.map((notification) => ({
-          id: notification.id,
-          recipient: notification.recipient.email,
-          type: notification.type,
-          title: notification.title,
-          href: notification.href,
-          readAt: notification.readAt?.toISOString() ?? null,
-          createdAt: notification.createdAt.toISOString(),
-        }))}
-        emails={emails.map((email) => ({
-          id: email.id,
-          toEmail: email.toEmail,
-          subject: email.subject,
-          status: email.status,
-          reason: email.reason,
-          createdAt: email.createdAt.toISOString(),
-        }))}
-        emailTemplates={emailTemplates.map((template) => ({
-          id: template.id,
-          type: template.type,
-          name: template.name,
-          subject: template.subject,
-          preheader: template.preheader,
-          headline: template.headline,
-          body: template.body,
-          accentColor: template.accentColor,
-          ctaLabel: template.ctaLabel,
-          isActive: template.isActive,
-        }))}
-        moderationCases={moderationCases.map((moderationCase) => ({
-          id: moderationCase.id,
-          type: moderationCase.type,
-          status: moderationCase.status,
-          reason: moderationCase.reason,
-          user: moderationCase.user?.email ?? null,
-          shop: moderationCase.shop?.name ?? null,
-          orderProduct: moderationCase.order?.product.title ?? null,
-          createdAt: moderationCase.createdAt.toISOString(),
-        }))}
-        auditLogs={auditLogs.map((log) => ({
-          id: log.id,
-          action: log.action,
-          targetType: log.targetType,
-          message: log.message,
-          createdAt: log.createdAt.toISOString(),
-        }))}
-      />
-    </main>
+    <div className="retro-shell min-h-screen text-foreground">
+      <SimpleAppHeader user={user} />
+      <main className="mx-auto max-w-7xl px-4 py-6">
+        <AdminDashboardClient
+          stats={stats}
+          homeContents={homeContents.map((content) => ({
+            id: content.id,
+            type: content.type,
+            title: content.title,
+            subtitle: content.subtitle,
+            body: content.body,
+            href: content.href,
+            imageUrl: content.imageUrl,
+            badge: content.badge,
+            sortOrder: content.sortOrder,
+            isActive: content.isActive,
+          }))}
+          cardSets={cardSets.map((set) => {
+            const counts = productCountsBySet.get(set.category) ?? { productCount: 0, auctionCount: 0, buyCount: 0 };
+            return {
+              id: set.id,
+              gameName: set.game.name,
+              category: set.category,
+              setCode: set.setCode,
+              setName: set.setName,
+              label: set.label,
+              isActive: set.isActive,
+              sortOrder: set.sortOrder,
+              ...counts,
+            };
+          })}
+          products={products.map((product) => ({
+            id: product.id,
+            title: product.title,
+            cardCode: product.cardCode,
+            setName: product.setName,
+            seller: product.sellerShop.name,
+            mode: product.mode,
+            status: product.status,
+            rarity: product.rarity,
+            currentPriceCents: product.currentPriceCents,
+            auctionEndsAt: product.auctionEndsAt?.toISOString() ?? null,
+            bidCount: product._count.bids,
+            favoriteCount: product._count.favorites,
+          }))}
+          orders={orders.map((order) => ({
+            id: order.id,
+            productTitle: order.product.title,
+            buyerEmail: order.buyer.email,
+            seller: order.sellerShop.name,
+            source: order.source,
+            status: order.status,
+            amountCents: order.amountCents,
+            paymentDueAt: order.paymentDueAt?.toISOString() ?? null,
+            shipDueAt: order.shipDueAt?.toISOString() ?? null,
+            refundDueAt: order.refundDueAt?.toISOString() ?? null,
+            trackingNumber: order.trackingNumber,
+          }))}
+          shops={shops.map((shop) => ({
+            id: shop.id,
+            name: shop.name,
+            ownerEmail: shop.owner.email,
+            status: shop.status,
+            productCount: shop._count.products,
+            orderCount: shop._count.orders,
+            moderationCount: shop._count.moderationCases,
+          }))}
+          users={users.map((account) => ({
+            id: account.id,
+            email: account.email,
+            displayName: account.displayName,
+            role: account.role,
+            status: account.status,
+            walletBalanceCents: account.walletBalanceCents,
+            bidLimitCents: account.bidLimitCents,
+            orderCount: account._count.orders,
+            bidCount: account._count.bids,
+          }))}
+          notifications={notifications.map((notification) => ({
+            id: notification.id,
+            recipient: notification.recipient.email,
+            type: notification.type,
+            title: notification.title,
+            href: notification.href,
+            readAt: notification.readAt?.toISOString() ?? null,
+            createdAt: notification.createdAt.toISOString(),
+          }))}
+          emails={emails.map((email) => ({
+            id: email.id,
+            toEmail: email.toEmail,
+            subject: email.subject,
+            status: email.status,
+            reason: email.reason,
+            createdAt: email.createdAt.toISOString(),
+          }))}
+          emailTemplates={emailTemplates.map((template) => ({
+            id: template.id,
+            type: template.type,
+            name: template.name,
+            subject: template.subject,
+            preheader: template.preheader,
+            headline: template.headline,
+            body: template.body,
+            accentColor: template.accentColor,
+            ctaLabel: template.ctaLabel,
+            isActive: template.isActive,
+          }))}
+          moderationCases={moderationCases.map((moderationCase) => ({
+            id: moderationCase.id,
+            type: moderationCase.type,
+            status: moderationCase.status,
+            reason: moderationCase.reason,
+            user: moderationCase.user?.email ?? null,
+            shop: moderationCase.shop?.name ?? null,
+            orderProduct: moderationCase.order?.product.title ?? null,
+            createdAt: moderationCase.createdAt.toISOString(),
+          }))}
+          auditLogs={auditLogs.map((log) => ({
+            id: log.id,
+            action: log.action,
+            targetType: log.targetType,
+            message: log.message,
+            createdAt: log.createdAt.toISOString(),
+          }))}
+        />
+      </main>
+      <AppFooter />
+    </div>
   );
 };
 

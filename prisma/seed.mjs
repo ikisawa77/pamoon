@@ -348,7 +348,7 @@ const main = async () => {
         email: shopSeed.ownerEmail,
         displayName: shopSeed.ownerName,
         passwordHash: demoPasswordHash,
-        role: "SHOP",
+        role: "RESELLER",
         status: "ACTIVE",
         walletBalanceCents: 0,
         bidLimitCents: 0,

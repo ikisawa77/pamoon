@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { apiError, unknownError, validationError } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { productCategoryEnumValues } from "@/lib/card-catalog";
 import { prisma } from "@/lib/db/prisma";
 import { flushPendingEmailNotifications } from "@/lib/email/sender";
 import { runMarketplaceSlaProcessor } from "@/lib/workflows/marketplace-workflow";
@@ -41,7 +42,7 @@ const actionSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("create-card-set"),
     gameName: z.string().trim().min(2).max(120),
-    category: z.enum(["OP01", "OP02", "OP03", "OP04", "OP05"]),
+    category: z.enum(productCategoryEnumValues),
     setCode: z.string().trim().min(2).max(40),
     setName: z.string().trim().min(2).max(120),
     label: z.string().trim().min(2).max(160),

@@ -129,6 +129,148 @@ export const createPaidBuyNowOrder = async (input: {
     return { order, product: updatedProduct, user: updatedBuyer };
   });
 
+export const createPaidCartOrders = async (input: {
+  productIds: string[];
+  buyerId: string;
+  shippingName?: string;
+  shippingAddress?: string;
+}) =>
+  prisma.$transaction(async (tx) => {
+    const now = new Date();
+    const productIds = Array.from(new Set(input.productIds));
+
+    if (productIds.length !== input.productIds.length) {
+      throw new Error("ตะกร้ามีสินค้าซ้ำ กรุณาตรวจรายการก่อนสั่งซื้อ");
+    }
+
+    const [buyer, products] = await Promise.all([
+      tx.user.findUnique({ where: { id: input.buyerId } }),
+      tx.product.findMany({
+        where: { id: { in: productIds } },
+        include: {
+          order: { select: { id: true } },
+          sellerShop: {
+            include: {
+              owner: { select: { id: true, displayName: true } },
+            },
+          },
+        },
+      }),
+    ]);
+
+    if (!buyer || buyer.status !== "ACTIVE") {
+      throw new Error("บัญชีผู้ซื้อไม่พร้อมใช้งาน");
+    }
+
+    if (products.length !== productIds.length) {
+      throw new Error("มีสินค้าในตะกร้าที่ไม่พบในระบบ กรุณารีเฟรชตะกร้าอีกครั้ง");
+    }
+
+    const unavailableProduct = products.find(
+      (product) => product.mode !== "BUY" || product.status !== "ACTIVE" || Boolean(product.order),
+    );
+
+    if (unavailableProduct) {
+      throw new Error(`${unavailableProduct.title} ไม่พร้อมให้สั่งซื้อแล้ว`);
+    }
+
+    const totalCents = products.reduce((total, product) => total + product.currentPriceCents, 0);
+
+    if (buyer.walletBalanceCents < totalCents) {
+      throw new Error("ยอดเงินในกระเป๋าไม่พอสำหรับสั่งซื้อสินค้าทั้งตะกร้า");
+    }
+
+    const updatedBuyer = await tx.user.update({
+      where: { id: buyer.id },
+      data: { walletBalanceCents: { decrement: totalCents } },
+      select: { id: true, walletBalanceCents: true, bidLimitCents: true },
+    });
+
+    const createdOrders: Array<{ id: string; productId: string; amountCents: number }> = [];
+
+    for (const product of products) {
+      const order = await tx.order.create({
+        data: {
+          productId: product.id,
+          buyerId: buyer.id,
+          sellerShopId: product.sellerShopId,
+          amountCents: product.currentPriceCents,
+          status: "PAID",
+          source: "BUY_NOW",
+          paidAt: now,
+          shipDueAt: addMs(now, SHIPPING_WINDOW_MS),
+          shippingName: input.shippingName ?? buyer.displayName,
+          shippingAddress: input.shippingAddress ?? "ที่อยู่จัดส่งตัวอย่างจากระบบทดสอบ",
+        },
+      });
+
+      await tx.product.update({
+        where: { id: product.id },
+        data: { status: "SOLD" },
+      });
+
+      await tx.walletTransaction.create({
+        data: {
+          userId: buyer.id,
+          type: "PURCHASE",
+          status: "COMPLETED",
+          amountCents: product.currentPriceCents,
+          referenceType: "ORDER_ESCROW",
+          referenceId: order.id,
+          note: `กันเงินไว้ใน escrow สำหรับ ${product.title}`,
+        },
+      });
+
+      await tx.chatThread.create({
+        data: {
+          orderId: order.id,
+          buyerId: buyer.id,
+          sellerShopId: product.sellerShopId,
+          productId: product.id,
+          lastMessageAt: now,
+        },
+      });
+
+      await tx.notification.createMany({
+        data: [
+          {
+            recipientId: buyer.id,
+            actorId: product.sellerShop.owner.id,
+            type: "ORDER_PAID",
+            title: "ชำระเงินสำเร็จ",
+            message: `ระบบกันเงินสำหรับ ${product.title} ไว้ใน escrow แล้ว ร้านค้าต้องจัดส่งภายใน 48 ชม.`,
+            href: "/account/orders",
+            productId: product.id,
+            orderId: order.id,
+          },
+          {
+            recipientId: product.sellerShop.owner.id,
+            actorId: buyer.id,
+            type: "SHIPPING_DUE",
+            title: "มีคำสั่งซื้อที่ต้องจัดส่ง",
+            message: `${buyer.displayName} ชำระเงิน ${product.title} แล้ว กรุณาจัดส่งภายใน 48 ชม.`,
+            href: "/account/orders",
+            productId: product.id,
+            orderId: order.id,
+          },
+        ],
+      });
+
+      createdOrders.push({
+        id: order.id,
+        productId: order.productId,
+        amountCents: order.amountCents,
+      });
+    }
+
+    return {
+      orders: createdOrders,
+      productIds,
+      totalCents,
+      user: updatedBuyer,
+    };
+  });
+
 export const payPendingOrder = async (input: { orderId: string; userId: string }) =>
   prisma.$transaction(async (tx) => {
     const now = new Date();

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
@@ -23,7 +23,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AppFooter } from "@/components/shared/AppFooter";
-import { NotificationBell } from "@/components/shared/NotificationBell";
+import { useAppConfirmDialog } from "@/components/shared/AppConfirmDialog";
+import { SimpleAppHeader } from "@/components/shared/SimpleAppHeader";
+import { cardSetDefinitions } from "@/lib/card-catalog";
 import { cn } from "@/lib/utils";
 import type { AuctionProduct, ListingMode, MarketplaceSnapshot, ProductCategory, ProductRarity } from "@/types/marketplace";
 
@@ -60,14 +62,11 @@ interface ActionResponse {
 
 const PAGE_SIZE = 48;
 
-const categoryLabels: Record<ProductCategory | "all", string> = {
-  all: "ทุกชุด",
-  op01: "OP-01",
-  op02: "OP-02",
-  op03: "OP-03",
-  op04: "OP-04",
-  op05: "OP-05",
-};
+const categoryOptions: Array<ProductCategory | "all"> = ["all", ...cardSetDefinitions.map((set) => set.category)];
+const categoryLabels = new Map<ProductCategory | "all", string>([
+  ["all", "ทุกชุด"],
+  ...cardSetDefinitions.map((set) => [set.category, set.setCode] as const),
+]);
 
 const rarityOptions: Array<ProductRarity | "all"> = ["all", "C", "UC", "R", "L", "SR", "SEC", "SP", "P"];
 
@@ -132,6 +131,7 @@ const ProductCatalogClient = ({ initialData, mode, title, subtitle, eyebrow }: P
   const [notice, setNotice] = useState("ค้นหาชื่อการ์ดได้จากทั้งรายการประมูลและซื้อเลย ใช้ตัวกรองเพื่อจำกัดชุด ระดับ หรือประเภทสินค้า");
   const [now, setNow] = useState(() => Date.now());
   const [page, setPage] = useState(1);
+  const { confirm, confirmDialog } = useAppConfirmDialog();
   const viewer = initialData.viewer;
   const isGuest = viewer.role === "GUEST";
 
@@ -226,7 +226,17 @@ const ProductCatalogClient = ({ initialData, mode, title, subtitle, eyebrow }: P
     }
 
     if (product.mode === "auction") {
-      const confirmed = window.confirm(`ยืนยันการบิด ${product.title} ที่ราคา ${money(product.nextBid)} หรือไม่`);
+      const confirmed = await confirm({
+        title: "ยืนยันการบิด",
+        description: "ระบบจะบันทึกราคาเสนอของคุณ และแจ้งเตือนผ่านกระดิ่ง/อีเมลเมื่อมีคนบิดทับ",
+        confirmLabel: "ยืนยันบิด",
+        cancelLabel: "ยกเลิก",
+        tone: "bid",
+        details: [
+          { label: "การ์ด", value: product.title },
+          { label: "ราคาเสนอ", value: money(product.nextBid) },
+        ],
+      });
 
       if (!confirmed) {
         setNotice("ยกเลิกการบิดแล้ว");
@@ -275,30 +285,11 @@ const ProductCatalogClient = ({ initialData, mode, title, subtitle, eyebrow }: P
   };
 
   return (
-    <div className="min-h-screen bg-[#f6f6f2] text-foreground">
-      <header className="sticky top-0 z-40 border-b bg-background/90 px-4 py-3 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex size-10 rotate-[-8deg] items-center justify-center rounded-md bg-primary text-primary-foreground">*</div>
-            <strong className="text-xl">BidCard TH</strong>
-          </Link>
-          <nav className="hidden items-center gap-2 md:flex">
-            <Button asChild variant={mode === "auction" ? "secondary" : "ghost"}><Link href="/auctions">ประมูล</Link></Button>
-            <Button asChild variant={mode === "buy" ? "secondary" : "ghost"}><Link href="/buy-now">ซื้อเลย</Link></Button>
-            <Button asChild variant="ghost"><Link href="/shops">ร้านค้า</Link></Button>
-            <Button asChild variant="ghost"><Link href="/collection">รายการโปรด</Link></Button>
-          </nav>
-          <div className="flex items-center gap-2">
-            <Button asChild variant="outline" className="hidden sm:inline-flex">
-              <Link href="/account">{viewer.displayName}</Link>
-            </Button>
-            <NotificationBell />
-          </div>
-        </div>
-      </header>
+    <div className="retro-shell min-h-screen text-foreground">
+      <SimpleAppHeader user={viewer} />
 
       <main className="mx-auto max-w-[1600px] px-4 py-6 lg:pl-24">
-        <section className="grid gap-8 border-b pb-8 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-end">
+        <section className="neon-panel grid gap-8 p-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-end">
           <div>
             <Badge className="mb-4">{eyebrow}</Badge>
             <h1 className="max-w-3xl text-4xl font-black leading-tight sm:text-6xl">{title}</h1>
@@ -410,6 +401,7 @@ const ProductCatalogClient = ({ initialData, mode, title, subtitle, eyebrow }: P
         onCategoryChange={setCategory}
       />
       <AppFooter />
+      {confirmDialog}
     </div>
   );
 };
@@ -574,9 +566,9 @@ const FilterDock = ({
             ))}
           </div>
           <div className="grid grid-cols-3 gap-2">
-            {(Object.keys(categoryLabels) as Array<ProductCategory | "all">).map((item) => (
+            {categoryOptions.map((item) => (
               <Button key={item} type="button" size="sm" variant={category === item ? "default" : "outline"} onClick={() => onCategoryChange(item)}>
-                {categoryLabels[item]}
+                {categoryLabels.get(item) ?? item.toUpperCase()}
               </Button>
             ))}
           </div>
@@ -596,3 +588,4 @@ const FilterDock = ({
 );
 
 export { ProductCatalogClient };
+

@@ -10,19 +10,28 @@ export const getActiveCardSets = async (): Promise<RuntimeCardSetDefinition[]> =
       orderBy: [{ sortOrder: "asc" }, { setCode: "asc" }],
     });
 
-    if (sets.length === 0) {
-      return cardSetDefinitions.map((set, index) => ({ ...set, isActive: true, sortOrder: index + 1 }));
-    }
+    const dbSetsByCategory = new Map(sets.map((set) => [set.category.toLowerCase(), set]));
 
-    return sets.map((set) => ({
-      id: set.id,
-      category: set.category.toLowerCase() as ProductCategory,
-      setCode: set.setCode,
-      setName: set.setName,
-      label: set.label,
-      isActive: set.isActive,
-      sortOrder: set.sortOrder,
-    }));
+    return cardSetDefinitions
+      .map((definition, index) => {
+        const dbSet = dbSetsByCategory.get(definition.category);
+
+        if (!dbSet) {
+          return { ...definition, isActive: true, sortOrder: index + 1 };
+        }
+
+        return {
+          id: dbSet.id,
+          category: dbSet.category.toLowerCase() as ProductCategory,
+          setCode: dbSet.setCode,
+          setName: dbSet.setName,
+          label: dbSet.label,
+          isActive: dbSet.isActive,
+          sortOrder: dbSet.sortOrder,
+        };
+      })
+      .filter((set) => set.isActive)
+      .sort((left, right) => left.sortOrder - right.sortOrder || left.setCode.localeCompare(right.setCode));
   } catch {
     return cardSetDefinitions.map((set, index) => ({ ...set, isActive: true, sortOrder: index + 1 }));
   }

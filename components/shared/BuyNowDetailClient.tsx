@@ -13,14 +13,13 @@ import {
   ShieldCheck,
   ShoppingBag,
   ShoppingCart,
-  Sparkles,
   Store,
   Truck,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AppFooter } from "@/components/shared/AppFooter";
-import { NotificationBell } from "@/components/shared/NotificationBell";
+import { SimpleAppHeader } from "@/components/shared/SimpleAppHeader";
 import { CARD_GAME_NAME } from "@/lib/card-catalog";
 import type { ViewerSummary } from "@/types/marketplace";
 
@@ -102,7 +101,7 @@ const BuyNowDetailClient = ({ product, viewer }: BuyNowDetailClientProps) => {
     const cart = readCart();
     const existing = cart.find((line) => line.id === product.id);
     const nextCart = existing
-      ? cart.map((line) => (line.id === product.id ? { ...line, quantity: line.quantity + 1 } : line))
+      ? cart.map((line) => (line.id === product.id ? { ...line, quantity: 1 } : line))
       : [
           ...cart,
           {
@@ -121,37 +120,8 @@ const BuyNowDetailClient = ({ product, viewer }: BuyNowDetailClientProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f7f5ee] text-slate-950">
-      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 px-4 py-3 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="flex size-10 rotate-[-8deg] items-center justify-center rounded-lg bg-slate-950 text-white shadow-sm">
-              <Sparkles className="size-5" />
-            </div>
-            <span className="text-xl font-black tracking-tight">BidCard TH</span>
-          </Link>
-          <nav className="hidden items-center gap-1 md:flex">
-            <Button asChild variant="ghost">
-              <Link href="/auctions">ประมูล</Link>
-            </Button>
-            <Button asChild variant="secondary">
-              <Link href="/buy-now">ซื้อเลย</Link>
-            </Button>
-            <Button asChild variant="ghost">
-              <Link href="/shops">ร้านค้า</Link>
-            </Button>
-            <Button asChild variant="ghost">
-              <Link href="/collection">รายการโปรด</Link>
-            </Button>
-          </nav>
-          <div className="flex items-center gap-2">
-            <Button asChild variant="outline" className="hidden sm:inline-flex">
-              <Link href="/account">{viewer.displayName}</Link>
-            </Button>
-            <NotificationBell />
-          </div>
-        </div>
-      </header>
+    <div className="retro-shell min-h-screen text-foreground">
+      <SimpleAppHeader user={viewer} />
 
       <main className="mx-auto max-w-7xl px-4 py-6 lg:py-10">
         <div className="mb-6 flex flex-wrap items-center gap-2 text-sm text-slate-600">

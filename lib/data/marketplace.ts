@@ -117,7 +117,7 @@ export const getMarketplaceSnapshot = cache(
         };
       });
 
-      const viewerCanTrade = viewer?.role === "MEMBER" || viewer?.role === "SHOP" || viewer?.role === "ADMIN";
+      const viewerCanTrade = viewer?.role === "MEMBER" || viewer?.role === "RESELLER" || viewer?.role === "ADMIN";
       const firstShop = products[0]?.sellerShop.id;
 
       return {

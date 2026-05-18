@@ -1,0 +1,57 @@
+<svg width="1440" height="960" viewBox="0 0 1440 960" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bg" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1130 126) rotate(142) scale(890 620)">
+      <stop stop-color="#00D9FF" stop-opacity=".34"/>
+      <stop offset=".42" stop-color="#7C3AED" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#060914" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#172033" stop-opacity=".86"/>
+      <stop offset="1" stop-color="#090D18" stop-opacity=".86"/>
+    </linearGradient>
+  </defs>
+  <rect width="1440" height="960" fill="#060914"/>
+  <rect width="1440" height="960" fill="url(#bg)"/>
+  <rect x="70" y="42" width="1300" height="84" rx="26" fill="#0B1020" fill-opacity=".76" stroke="#22304A"/>
+  <rect x="98" y="66" width="44" height="44" rx="13" fill="#E11D48"/>
+  <text x="160" y="96" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="28" font-weight="800">BidCard TH</text>
+  <text x="676" y="94" fill="#CBD5E1" font-family="Arial, sans-serif" font-size="16">ประมูล</text>
+  <text x="765" y="94" fill="#CBD5E1" font-family="Arial, sans-serif" font-size="16">ซื้อเลย</text>
+  <text x="850" y="94" fill="#CBD5E1" font-family="Arial, sans-serif" font-size="16">ร้านค้า</text>
+  <rect x="1144" y="63" width="94" height="44" rx="14" fill="#111827" stroke="#334155"/>
+  <text x="1172" y="91" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="14">Wallet</text>
+  <rect x="1252" y="63" width="88" height="44" rx="14" fill="#E11D48"/>
+  <text x="1277" y="91" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="700">Login</text>
+  <text x="88" y="220" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="66" font-weight="900">Hologram</text>
+  <text x="88" y="286" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="66" font-weight="900">Marketplace</text>
+  <text x="92" y="340" fill="#94A3B8" font-family="Arial, sans-serif" font-size="21">Premium card auctions and buy-now listings with trusted reseller workflow.</text>
+  <rect x="92" y="390" width="164" height="54" rx="17" fill="#E11D48"/>
+  <text x="127" y="424" fill="#fff" font-family="Arial, sans-serif" font-size="17" font-weight="800">เริ่มประมูล</text>
+  <rect x="272" y="390" width="148" height="54" rx="17" fill="#0B1020" stroke="#00D9FF" stroke-opacity=".52"/>
+  <text x="319" y="424" fill="#CFFAFE" font-family="Arial, sans-serif" font-size="17" font-weight="800">ซื้อเลย</text>
+  <rect x="456" y="170" width="808" height="430" rx="34" fill="url(#panel)" stroke="#22304A"/>
+  <rect x="492" y="206" width="220" height="312" rx="26" fill="#111827" stroke="#00D9FF" stroke-opacity=".36"/>
+  <rect x="518" y="232" width="168" height="220" rx="20" fill="#16213A"/>
+  <circle cx="602" cy="342" r="74" fill="#00D9FF" fill-opacity=".14" stroke="#00D9FF" stroke-opacity=".4"/>
+  <text x="518" y="486" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="20" font-weight="800">Yamato SEC</text>
+  <text x="518" y="511" fill="#FACC15" font-family="Arial, sans-serif" font-size="16" font-weight="700">฿18,600</text>
+  <rect x="744" y="206" width="220" height="312" rx="26" fill="#111827" stroke="#E11D48" stroke-opacity=".42"/>
+  <rect x="770" y="232" width="168" height="220" rx="20" fill="#241124"/>
+  <circle cx="854" cy="342" r="74" fill="#E11D48" fill-opacity=".14" stroke="#E11D48" stroke-opacity=".36"/>
+  <text x="770" y="486" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="20" font-weight="800">Luffy SP</text>
+  <text x="770" y="511" fill="#FACC15" font-family="Arial, sans-serif" font-size="16" font-weight="700">00:04:59</text>
+  <rect x="996" y="206" width="220" height="312" rx="26" fill="#111827" stroke="#FACC15" stroke-opacity=".38"/>
+  <rect x="1022" y="232" width="168" height="220" rx="20" fill="#211A0A"/>
+  <circle cx="1106" cy="342" r="74" fill="#FACC15" fill-opacity=".14" stroke="#FACC15" stroke-opacity=".36"/>
+  <text x="1022" y="486" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="20" font-weight="800">Mihawk SR</text>
+  <text x="1022" y="511" fill="#FACC15" font-family="Arial, sans-serif" font-size="16" font-weight="700">฿50</text>
+  <rect x="88" y="656" width="390" height="166" rx="28" fill="#0B1020" fill-opacity=".78" stroke="#22304A"/>
+  <text x="122" y="706" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="23" font-weight="800">Game Showcase Carousel</text>
+  <text x="122" y="742" fill="#94A3B8" font-family="Arial, sans-serif" font-size="16">Featured listings with carousel controls and countdown status.</text>
+  <rect x="524" y="656" width="390" height="166" rx="28" fill="#0B1020" fill-opacity=".78" stroke="#22304A"/>
+  <text x="558" y="706" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="23" font-weight="800">Community + Reseller</text>
+  <text x="558" y="742" fill="#94A3B8" font-family="Arial, sans-serif" font-size="16">Trusted stores, followers, reviews, and post-payment chat.</text>
+  <rect x="960" y="656" width="390" height="166" rx="28" fill="#0B1020" fill-opacity=".78" stroke="#22304A"/>
+  <text x="994" y="706" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="23" font-weight="800">Download CTA adapted</text>
+  <text x="994" y="742" fill="#94A3B8" font-family="Arial, sans-serif" font-size="16">Marketplace CTAs: start bidding, buy now, become reseller.</text>
+</svg>

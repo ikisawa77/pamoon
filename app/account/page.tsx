@@ -3,7 +3,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { prisma } from "@/lib/db/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -16,24 +15,47 @@ const moneyFromCents = (value: number) =>
     .format(value / 100)
     .replace("THB", "฿");
 
+const roleLabel = (role: string) => {
+  if (role === "ADMIN") {
+    return "ผู้ดูแลระบบ";
+  }
+
+  if (role === "RESELLER") {
+    return "Reseller";
+  }
+
+  return "สมาชิก";
+};
+
 const AccountPage = async () => {
-  const signedInUser = await getCurrentUser();
-  const demoMember = signedInUser
-    ? null
-    : await prisma.user.findFirst({
-        where: { role: "MEMBER" },
-        orderBy: { createdAt: "asc" },
-        select: {
-          email: true,
-          displayName: true,
-          role: true,
-          status: true,
-          walletBalanceCents: true,
-          bidLimitCents: true,
-          createdAt: true,
-        },
-      });
-  const profile = signedInUser ?? demoMember;
+  const profile = await getCurrentUser();
+
+  if (!profile) {
+    return (
+      <div className="flex flex-col gap-6">
+        <section>
+          <h1 className="text-2xl font-bold">บัญชีของฉัน</h1>
+          <p className="text-sm text-muted-foreground">เข้าสู่ระบบเพื่อจัดการบัญชี คำสั่งซื้อ การประมูล และร้านค้าของคุณ</p>
+        </section>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>กรุณาเข้าสู่ระบบ</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            <Button asChild>
+              <Link href="/login">เข้าสู่ระบบ</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/register">สมัครสมาชิก</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const sellerCta = profile.role === "MEMBER" ? "สมัคร Reseller" : "จัดการร้านค้า";
 
   return (
     <div className="flex flex-col gap-6">
@@ -44,43 +66,37 @@ const AccountPage = async () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>{profile?.displayName ?? "ยังไม่ได้เข้าสู่ระบบ"}</CardTitle>
+          <CardTitle>{profile.displayName}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          {profile ? (
-            <>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <span className="rounded-md bg-muted p-3">
-                  <strong className="block">อีเมล</strong>
-                  <span className="text-muted-foreground">{profile.email}</span>
-                </span>
-                <span className="rounded-md bg-muted p-3">
-                  <strong className="block">สถานะ</strong>
-                  <Badge>{profile.status}</Badge>
-                </span>
-                <span className="rounded-md bg-muted p-3">
-                  <strong className="block">บทบาท</strong>
-                  <span className="text-muted-foreground">{profile.role}</span>
-                </span>
-                <span className="rounded-md bg-muted p-3">
-                  <strong className="block">วงเงินประมูล</strong>
-                  <span className="text-muted-foreground">{moneyFromCents(profile.bidLimitCents)}</span>
-                </span>
-              </div>
-              <div className="rounded-md border p-4">
-                <span className="text-sm text-muted-foreground">ยอดเงินคงเหลือ</span>
-                <strong className="block text-3xl">{moneyFromCents(profile.walletBalanceCents)}</strong>
-              </div>
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">ยังไม่มีข้อมูลสมาชิกในฐานข้อมูล</p>
-          )}
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <span className="rounded-md bg-muted p-3">
+              <strong className="block">อีเมล</strong>
+              <span className="text-muted-foreground">{profile.email}</span>
+            </span>
+            <span className="rounded-md bg-muted p-3">
+              <strong className="block">สถานะ</strong>
+              <Badge>{profile.status}</Badge>
+            </span>
+            <span className="rounded-md bg-muted p-3">
+              <strong className="block">บทบาท</strong>
+              <span className="text-muted-foreground">{roleLabel(profile.role)}</span>
+            </span>
+            <span className="rounded-md bg-muted p-3">
+              <strong className="block">วงเงินประมูล</strong>
+              <span className="text-muted-foreground">{moneyFromCents(profile.bidLimitCents)}</span>
+            </span>
+          </div>
+          <div className="rounded-md border p-4">
+            <span className="text-sm text-muted-foreground">ยอดเงินคงเหลือ</span>
+            <strong className="block text-3xl">{moneyFromCents(profile.walletBalanceCents)}</strong>
+          </div>
           <div className="flex flex-wrap gap-2">
             <Button asChild>
               <Link href="/account/addresses">จัดการที่อยู่</Link>
             </Button>
             <Button asChild variant="outline">
-              <Link href="/account/seller">สมัครร้านค้า</Link>
+              <Link href="/account/seller">{sellerCta}</Link>
             </Button>
           </div>
         </CardContent>

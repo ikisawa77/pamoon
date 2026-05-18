@@ -1,4 +1,8 @@
 import { z } from "zod";
+import { productCategoryValues } from "@/lib/card-catalog";
+
+const optionalText = (maxLength: number) =>
+  z.preprocess((value) => (typeof value === "string" && value.trim() === "" ? undefined : value), z.string().trim().max(maxLength).optional());
 
 export const topUpSchema = z.object({
   amount: z.coerce.number().int().min(100).max(50000),
@@ -14,20 +18,31 @@ export const shopRegistrationSchema = z.object({
 export const listingSchema = z.object({
   mode: z.enum(["auction", "buy"]),
   game: z.literal("One Piece Card Game (Japanese)"),
-  category: z.enum(["op01", "op02", "op03", "op04", "op05"]),
+  category: z.enum(productCategoryValues),
   title: z.string().min(2).max(120),
-  code: z.string().trim().regex(/^OP\d{2}-\d{3}$/i, "Card code must look like OP01-121").transform((value) => value.toUpperCase()),
+  code: z
+    .string()
+    .trim()
+    .regex(/^(?:OP|EB|ST)\d{2}-\d{3}$|^PRB\d{2}-\d{3}$/i, "รหัสการ์ดต้องอยู่ในรูปแบบ OP01-121, EB01-001, PRB01-001 หรือ ST01-001")
+    .transform((value) => value.toUpperCase()),
   rarity: z.enum(["C", "UC", "R", "L", "SR", "SEC", "SP", "P"]),
   openingPrice: z.coerce.number().int().min(100).max(500000),
+  bidIncrement: z.coerce.number().int().min(10).max(500000).optional(),
   buyNowPrice: z.coerce.number().int().min(0).max(500000),
   duration: z.string().min(1).max(40),
+  auctionEndsAt: optionalText(80),
   condition: z.string().min(1).max(40),
   description: z.string().trim().min(10).max(2000),
 });
 
 export const createProductApiSchema = listingSchema.extend({
   sellerShopId: z.string().min(1).optional(),
-  imageUrl: z.string().url().optional(),
+  imageUrl: z
+    .string()
+    .trim()
+    .max(255)
+    .refine((value) => value.startsWith("/") || /^https?:\/\//i.test(value), "รูปสินค้าต้องเป็น URL หรือไฟล์ที่อัปโหลดในระบบ")
+    .optional(),
 });
 
 export const createBidApiSchema = z.object({
@@ -48,6 +63,12 @@ export const createOrderApiSchema = z.object({
   shippingAddress: z.string().min(5).max(1000).optional(),
 });
 
+export const cartCheckoutApiSchema = z.object({
+  productIds: z.array(z.string().min(1)).min(1).max(20),
+  shippingName: z.string().trim().min(2).max(120).optional(),
+  shippingAddress: z.string().trim().min(5).max(1000).optional(),
+});
+
 export const orderActionSchema = z.object({
   action: z.enum(["pay", "ship", "extend-shipping"]),
   trackingNumber: z.string().trim().min(3).max(120).optional(),
@@ -57,9 +78,6 @@ export const chatMessageSchema = z.object({
   threadId: z.string().min(1),
   body: z.string().trim().min(1).max(1000),
 });
-
-const optionalText = (maxLength: number) =>
-  z.preprocess((value) => (typeof value === "string" && value.trim() === "" ? undefined : value), z.string().trim().max(maxLength).optional());
 
 export const homeContentUpdateSchema = z.object({
   title: z.string().trim().min(2).max(160),
@@ -97,9 +115,36 @@ export const notificationQuerySchema = z.object({
 });
 
 export const loginSchema = z.object({
-  email: z.string().email().max(191),
+  email: z.string().trim().email().max(191).transform((value) => value.toLowerCase()),
   password: z.string().min(1).max(128),
 });
+
+export const registerSchema = z
+  .object({
+    displayName: z.string().trim().min(2).max(120),
+    email: z.string().trim().email().max(191).transform((value) => value.toLowerCase()),
+    password: z.string().min(6).max(128),
+    confirmPassword: z.string().min(6).max(128),
+    role: z.enum(["MEMBER", "RESELLER"]),
+    shopName: z.string().trim().max(120).optional(),
+  })
+  .superRefine((input, context) => {
+    if (input.password !== input.confirmPassword) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "รหัสผ่านยืนยันไม่ตรงกัน",
+        path: ["confirmPassword"],
+      });
+    }
+
+    if (input.role === "RESELLER" && (!input.shopName || input.shopName.length < 2)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "กรุณากรอกชื่อร้านค้าสำหรับ Reseller",
+        path: ["shopName"],
+      });
+    }
+  });
 
 export type TopUpInput = z.infer<typeof topUpSchema>;
 export type ShopRegistrationInput = z.infer<typeof shopRegistrationSchema>;
@@ -108,6 +153,7 @@ export type CreateProductApiInput = z.infer<typeof createProductApiSchema>;
 export type CreateBidApiInput = z.infer<typeof createBidApiSchema>;
 export type TopUpApiInput = z.infer<typeof topUpApiSchema>;
 export type CreateOrderApiInput = z.infer<typeof createOrderApiSchema>;
+export type CartCheckoutApiInput = z.infer<typeof cartCheckoutApiSchema>;
 export type OrderActionInput = z.infer<typeof orderActionSchema>;
 export type ChatMessageInput = z.infer<typeof chatMessageSchema>;
 export type HomeContentUpdateInput = z.infer<typeof homeContentUpdateSchema>;
@@ -116,3 +162,4 @@ export type FavoriteProductInput = z.infer<typeof favoriteProductSchema>;
 export type FavoriteProductUpdateInput = z.infer<typeof favoriteProductUpdateSchema>;
 export type NotificationQueryInput = z.infer<typeof notificationQuerySchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+export type RegisterInput = z.infer<typeof registerSchema>;

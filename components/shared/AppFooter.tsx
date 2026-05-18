@@ -2,15 +2,15 @@ import Link from "next/link";
 import { Mail, ShieldCheck, Store, Trophy } from "lucide-react";
 
 const AppFooter = () => (
-  <footer className="mt-12 border-t bg-[#141820] px-4 py-10 text-white">
-    <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-[minmax(0,1fr)_180px_180px_220px]">
+  <footer className="mt-12 border-t border-white/10 bg-[#060914] px-4 py-10 text-white">
+    <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-[minmax(0,1fr)_180px_180px_240px]">
       <section>
         <div className="flex items-center gap-3">
-          <div className="flex size-10 rotate-[-8deg] items-center justify-center rounded-lg bg-primary text-primary-foreground">*</div>
+          <div className="flex size-10 rotate-[-8deg] items-center justify-center rounded-lg bg-primary text-primary-foreground">★</div>
           <strong className="text-2xl">BidCard TH</strong>
         </div>
         <p className="mt-4 max-w-md text-sm leading-7 text-white/65">
-          ตลาดประมูลและซื้อขายการ์ดที่รวมร้านค้า สมาชิก กระเป๋าเงิน แจ้งเตือน และ SLA ไว้ในระบบเดียว
+          ตลาดประมูลและซื้อขายการ์ดแบบ immersive marketplace รวมร้านค้า สมาชิก กระเป๋าเงิน แจ้งเตือน realtime และ SLA ไว้ในระบบเดียว
         </p>
       </section>
 
@@ -26,7 +26,7 @@ const AppFooter = () => (
         <strong className="mb-2 text-white">บัญชี</strong>
         <Link href="/account">บัญชีของฉัน</Link>
         <Link href="/wallet">เติมเงิน</Link>
-        <Link href="/seller/register">สมัครร้านค้า</Link>
+        <Link href="/seller/register">สมัคร Reseller</Link>
         <Link href="/help">ช่วยเหลือ</Link>
       </nav>
 

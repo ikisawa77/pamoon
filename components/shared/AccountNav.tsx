@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { LogoutButton } from "@/components/shared/LogoutButton";
 import { cn } from "@/lib/utils";
 
-const accountMenuItems = [
+const baseAccountMenuItems = [
   { label: "บัญชีของฉัน", href: "/account", icon: User },
   { label: "ที่อยู่จัดส่งสินค้า", href: "/account/addresses", icon: MapPin },
   { label: "รายการที่ถูกใจ", href: "/account/favorites", icon: Heart },
@@ -27,16 +27,18 @@ const accountMenuItems = [
   { label: "รายการตั้งรับ", href: "/account/wanted", icon: BellRing },
   { label: "รายการคำสั่งซื้อ", href: "/account/orders", icon: PackageCheck },
   { label: "แชท", href: "/account/chat", icon: MessageCircle },
-  { label: "สมัครร้านค้า", href: "/account/seller", icon: Store },
 ];
 
 interface AccountNavProps {
   isAdmin: boolean;
+  isReseller: boolean;
 }
 
-const AccountNav = ({ isAdmin }: AccountNavProps) => {
+const AccountNav = ({ isAdmin, isReseller }: AccountNavProps) => {
   const pathname = usePathname();
   const adminActive = pathname === "/admin";
+  const sellerLabel = isReseller ? "จัดการร้านค้า" : "สมัคร Reseller";
+  const accountMenuItems = [...baseAccountMenuItems, { label: sellerLabel, href: "/account/seller", icon: Store }];
 
   return (
     <aside className="flex flex-col gap-3">

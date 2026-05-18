@@ -60,9 +60,38 @@ if (Test-Path $MySqlCli) {
 
 $existing = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
 if ($existing) {
-  Write-Host "[READY] Server is already running at $Url" -ForegroundColor Green
-  Start-Process $Url
-  exit 0
+  $serverHealthy = $false
+  try {
+    $homeResponse = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 5
+    $cssMatch = [regex]::Match($homeResponse.Content, 'href="([^"]*layout\.css[^"]*)"')
+    if ($homeResponse.StatusCode -ge 200 -and $homeResponse.StatusCode -lt 500 -and $cssMatch.Success) {
+      $cssPath = $cssMatch.Groups[1].Value -replace "&amp;", "&"
+      $cssResponse = Invoke-WebRequest -Uri ("$Url$cssPath") -UseBasicParsing -TimeoutSec 5
+      $serverHealthy = $cssResponse.StatusCode -eq 200
+    }
+  } catch {
+    $serverHealthy = $false
+  }
+
+  if ($serverHealthy) {
+    Write-Host "[READY] Server is already running at $Url" -ForegroundColor Green
+    Start-Process $Url
+    exit 0
+  }
+
+  Write-Host "[FIX] Existing Next.js server is stale or missing CSS. Restarting it..."
+  $existing |
+    Select-Object -ExpandProperty OwningProcess -Unique |
+    ForEach-Object {
+      Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue
+    }
+  Start-Sleep -Seconds 2
+}
+
+$NextCacheDir = Join-Path $AppDir ".next"
+if (Test-Path $NextCacheDir) {
+  Write-Host "[CLEAN] Removing stale Next.js cache..."
+  Remove-Item -LiteralPath $NextCacheDir -Recurse -Force
 }
 
 if (-not (Test-Path (Join-Path $AppDir "node_modules"))) {

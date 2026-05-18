@@ -13,6 +13,21 @@ const mapCategory = (category: ProductCategory) => category.toUpperCase() as Upp
 const mapMode = (mode: ListingMode) => mode.toUpperCase() as Uppercase<ListingMode>;
 const mapRarity = (rarity: ProductRarity) => rarity;
 
+const resolveAuctionEnd = (value: string | undefined) => {
+  if (!value) {
+    return new Date("2028-04-28T17:00:00.000Z");
+  }
+
+  const auctionEndsAt = new Date(value);
+  const minimumEndAt = new Date(Date.now() + 60_000);
+
+  if (Number.isNaN(auctionEndsAt.getTime()) || auctionEndsAt <= minimumEndAt) {
+    return null;
+  }
+
+  return auctionEndsAt;
+};
+
 export const GET = async (request: NextRequest) => {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -28,11 +43,7 @@ export const GET = async (request: NextRequest) => {
         ...(set ? { category: set.toUpperCase() as Uppercase<ProductCategory> } : {}),
         ...(query
           ? {
-              OR: [
-                { title: { contains: query } },
-                { cardCode: { contains: query } },
-                { setName: { contains: query } },
-              ],
+              OR: [{ title: { contains: query } }, { cardCode: { contains: query } }, { setName: { contains: query } }],
             }
           : {}),
       },
@@ -65,7 +76,7 @@ export const POST = async (request: NextRequest) => {
       return apiError("กรุณาเข้าสู่ระบบก่อนลงสินค้า", 401);
     }
 
-    if (user.role !== "SHOP" && user.role !== "ADMIN") {
+    if (user.role !== "RESELLER" && user.role !== "ADMIN") {
       return apiError("บัญชีนี้ยังไม่มีสิทธิ์ลงสินค้า", 403);
     }
 
@@ -73,7 +84,7 @@ export const POST = async (request: NextRequest) => {
       return apiError("บัญชีนี้ยังไม่พร้อมลงสินค้า", 403);
     }
 
-    const body = await request.json();
+    const body: unknown = await request.json();
     const parsed = createProductApiSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -87,16 +98,24 @@ export const POST = async (request: NextRequest) => {
         ownerId: user.id,
         status: "APPROVED",
       },
-      orderBy: [
-        user.role === "ADMIN" ? { slug: "asc" } : { createdAt: "asc" },
-      ],
+      orderBy: user.role === "ADMIN" ? [{ slug: "asc" }] : [{ createdAt: "asc" }],
     });
 
     if (!sellerShop) {
-      return apiError(user.role === "ADMIN" ? "ไม่พบร้าน Admin Dev Shop สำหรับลงสินค้าทดสอบ" : "ไม่พบร้านค้าที่อนุมัติแล้ว", 404);
+      return apiError(
+        user.role === "ADMIN" ? "ไม่พบร้าน Admin Dev Shop สำหรับลงสินค้าทดสอบ" : "ไม่พบร้านค้าที่อนุมัติแล้ว",
+        404,
+      );
+    }
+
+    const auctionEndsAt = input.mode === "auction" ? resolveAuctionEnd(input.auctionEndsAt) : null;
+
+    if (input.mode === "auction" && !auctionEndsAt) {
+      return apiError("เวลาสิ้นสุดประมูลต้องเป็นเวลาหลังจากปัจจุบันอย่างน้อย 1 นาที", 400);
     }
 
     const priceCents = input.mode === "auction" ? input.openingPrice * 100 : input.buyNowPrice * 100;
+    const bidIncrementCents = (input.bidIncrement ?? 250) * 100;
     const product = await prisma.product.create({
       data: {
         sellerShopId: sellerShop.id,
@@ -112,9 +131,9 @@ export const POST = async (request: NextRequest) => {
         imageUrl: input.imageUrl,
         openingPriceCents: input.openingPrice * 100,
         currentPriceCents: priceCents,
-        nextBidCents: priceCents + 25000,
+        nextBidCents: input.mode === "auction" ? priceCents + bidIncrementCents : priceCents + 25000,
         buyNowPriceCents: input.buyNowPrice > 0 ? input.buyNowPrice * 100 : null,
-        auctionEndsAt: input.mode === "auction" ? new Date("2028-04-28T17:00:00.000Z") : null,
+        auctionEndsAt,
       },
       include: {
         sellerShop: {

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
@@ -17,7 +17,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AppFooter } from "@/components/shared/AppFooter";
-import { NotificationBell } from "@/components/shared/NotificationBell";
+import { useAppConfirmDialog } from "@/components/shared/AppConfirmDialog";
+import { SimpleAppHeader } from "@/components/shared/SimpleAppHeader";
 import { cn } from "@/lib/utils";
 import type { ViewerSummary } from "@/types/marketplace";
 
@@ -107,21 +108,22 @@ const AuctionDetailClient = ({ product: initialProduct, viewer }: AuctionDetailC
   const [product, setProduct] = useState(initialProduct);
   const [bidAmount, setBidAmount] = useState(String(Math.round(initialProduct.nextBidCents / 100)));
   const [favorite, setFavorite] = useState(initialProduct.isFavorite);
-  const [notice, setNotice] = useState("ใส่ราคาที่ต้องการเสนอ ระบบจะแจ้งเตือนผ่านกระดิ่งและอีเมลเมื่อมีคนบิดทับ");
+  const [notice, setNotice] = useState("เนเธชเนเธฃเธฒเธเธฒเธ—เธตเนเธ•เนเธญเธเธเธฒเธฃเน€เธชเธเธญ เธฃเธฐเธเธเธเธฐเนเธเนเธเน€เธ•เธทเธญเธเธเนเธฒเธเธเธฃเธฐเธ”เธดเนเธเนเธฅเธฐเธญเธตเน€เธกเธฅเน€เธกเธทเนเธญเธกเธตเธเธเธเธดเธ”เธ—เธฑเธ");
   const [now, setNow] = useState(() => Date.now());
+  const { confirm, confirmDialog } = useAppConfirmDialog();
   const isGuest = viewer.role === "GUEST";
   const remaining = useMemo(() => getRemaining(product.auctionEndsAt, now), [now, product.auctionEndsAt]);
   const topBid = product.bids[0];
 
   const infoRows = [
-    ["ชื่อ", product.title],
-    ["การ์ดเกม", "One Piece Card Game (Japanese)"],
-    ["ชุด", product.setName],
-    ["รหัสชุด", product.setCode],
-    ["รหัสการ์ด", product.cardCode],
-    ["ระดับ", product.rarity],
-    ["สภาพสินค้า", product.conditionLabel],
-    ["ร้านค้า", product.sellerShop.name],
+    ["เธเธทเนเธญ", product.title],
+    ["เธเธฒเธฃเนเธ”เน€เธเธก", "One Piece Card Game (Japanese)"],
+    ["เธเธธเธ”", product.setName],
+    ["เธฃเธซเธฑเธชเธเธธเธ”", product.setCode],
+    ["เธฃเธซเธฑเธชเธเธฒเธฃเนเธ”", product.cardCode],
+    ["เธฃเธฐเธ”เธฑเธ", product.rarity],
+    ["เธชเธ เธฒเธเธชเธดเธเธเนเธฒ", product.conditionLabel],
+    ["เธฃเนเธฒเธเธเนเธฒ", product.sellerShop.name],
   ];
 
   useEffect(() => {
@@ -131,7 +133,7 @@ const AuctionDetailClient = ({ product: initialProduct, viewer }: AuctionDetailC
 
   const toggleFavorite = async () => {
     if (isGuest) {
-      setNotice("กรุณาเข้าสู่ระบบก่อนเพิ่มรายการโปรด");
+      setNotice("เธเธฃเธธเธ“เธฒเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธเธเนเธญเธเน€เธเธดเนเธกเธฃเธฒเธขเธเธฒเธฃเนเธเธฃเธ”");
       return;
     }
 
@@ -153,24 +155,34 @@ const AuctionDetailClient = ({ product: initialProduct, viewer }: AuctionDetailC
 
     if (!response.ok || !result.ok) {
       setFavorite(!nextFavorite);
-      setNotice(result.error?.message ?? "บันทึกรายการโปรดไม่สำเร็จ");
+      setNotice(result.error?.message ?? "เธเธฑเธเธ—เธถเธเธฃเธฒเธขเธเธฒเธฃเนเธเธฃเธ”เนเธกเนเธชเธณเน€เธฃเนเธ");
       return;
     }
 
-    setNotice(nextFavorite ? "เพิ่มรายการโปรดและเปิดแจ้งเตือนอีเมลแล้ว" : "ลบออกจากรายการโปรดแล้ว");
+    setNotice(nextFavorite ? "เน€เธเธดเนเธกเธฃเธฒเธขเธเธฒเธฃเนเธเธฃเธ”เนเธฅเธฐเน€เธเธดเธ”เนเธเนเธเน€เธ•เธทเธญเธเธญเธตเน€เธกเธฅเนเธฅเนเธง" : "เธฅเธเธญเธญเธเธเธฒเธเธฃเธฒเธขเธเธฒเธฃเนเธเธฃเธ”เนเธฅเนเธง");
   };
 
   const submitBid = async () => {
     if (isGuest) {
-      setNotice("กรุณาเข้าสู่ระบบก่อนเข้าร่วมประมูล");
+      setNotice("เธเธฃเธธเธ“เธฒเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธเธเนเธญเธเน€เธเนเธฒเธฃเนเธงเธกเธเธฃเธฐเธกเธนเธฅ");
       return;
     }
 
     const amountCents = Math.round(Number(bidAmount) * 100);
-    const confirmed = window.confirm(`ยืนยันการบิด ${product.title} ที่ราคา ${money(amountCents)} หรือไม่`);
+    const confirmed = await confirm({
+      title: "เธขเธทเธเธขเธฑเธเธเธฒเธฃเธเธดเธ”",
+      description: "เธฃเธฐเธเธเธเธฐเธเธฑเธเธ—เธถเธเธฃเธฒเธเธฒเธเธฃเธฐเธกเธนเธฅเธเธญเธเธเธธเธ“เธ—เธฑเธเธ—เธต เนเธฅเธฐเนเธเนเธเน€เธ•เธทเธญเธเน€เธกเธทเนเธญเธกเธตเธชเธกเธฒเธเธดเธเธเธเธญเธทเนเธเธเธดเธ”เธ—เธฑเธ",
+      confirmLabel: "เธขเธทเธเธขเธฑเธเธเธดเธ”",
+      cancelLabel: "เธขเธเน€เธฅเธดเธ",
+      tone: "bid",
+      details: [
+        { label: "เธเธฒเธฃเนเธ”", value: product.title },
+        { label: "เธฃเธฒเธเธฒเน€เธชเธเธญ", value: money(amountCents) },
+      ],
+    });
 
     if (!confirmed) {
-      setNotice("ยกเลิกการบิดแล้ว");
+      setNotice("เธขเธเน€เธฅเธดเธเธเธฒเธฃเธเธดเธ”เนเธฅเนเธง");
       return;
     }
 
@@ -182,7 +194,7 @@ const AuctionDetailClient = ({ product: initialProduct, viewer }: AuctionDetailC
     const result = (await response.json()) as BidResponse;
 
     if (!response.ok || !result.ok || !result.product) {
-      setNotice(result.error?.message ?? "เสนอราคาไม่สำเร็จ");
+      setNotice(result.error?.message ?? "เน€เธชเธเธญเธฃเธฒเธเธฒเนเธกเนเธชเธณเน€เธฃเนเธ");
       return;
     }
 
@@ -202,40 +214,21 @@ const AuctionDetailClient = ({ product: initialProduct, viewer }: AuctionDetailC
       bids: [newBid, ...current.bids.map((bid) => (bid.status === "WINNING" ? { ...bid, status: "OUTBID" } : bid))],
     }));
     setBidAmount(String(Math.round((result.product.nextBidCents ?? amountCents) / 100)));
-    setNotice("เสนอราคาสำเร็จ ตอนนี้คุณเป็นผู้เสนอราคาสูงสุด");
+    setNotice("เน€เธชเธเธญเธฃเธฒเธเธฒเธชเธณเน€เธฃเนเธ เธ•เธญเธเธเธตเนเธเธธเธ“เน€เธเนเธเธเธนเนเน€เธชเธเธญเธฃเธฒเธเธฒเธชเธนเธเธชเธธเธ”");
   };
 
   return (
     <div className="min-h-screen bg-[#f7f5ee] text-slate-950">
-      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 px-4 py-3 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex size-10 rotate-[-8deg] items-center justify-center rounded-md bg-primary text-primary-foreground">*</div>
-            <strong className="text-xl">BidCard TH</strong>
-          </Link>
-          <nav className="hidden items-center gap-2 md:flex">
-            <Button asChild variant="secondary"><Link href="/auctions">ประมูล</Link></Button>
-            <Button asChild variant="ghost"><Link href="/buy-now">ซื้อเลย</Link></Button>
-            <Button asChild variant="ghost"><Link href="/shops">ร้านค้า</Link></Button>
-            <Button asChild variant="ghost"><Link href="/collection">รายการโปรด</Link></Button>
-          </nav>
-          <div className="flex items-center gap-2">
-            <Button asChild variant="outline" className="hidden sm:inline-flex">
-              <Link href="/account">{viewer.displayName}</Link>
-            </Button>
-            <NotificationBell />
-          </div>
-        </div>
-      </header>
+      <SimpleAppHeader user={viewer} />
 
       <main className="mx-auto max-w-7xl px-4 py-8">
         <div className="mb-6 flex items-center justify-between gap-3">
           <div>
             <Badge>Live Auction</Badge>
             <h1 className="mt-3 text-4xl font-black leading-tight md:text-5xl">{product.title}</h1>
-            <p className="mt-2 text-sm text-slate-600">{product.cardCode} · {product.setName} · {product.conditionLabel}</p>
+            <p className="mt-2 text-sm text-slate-600">{product.cardCode} ยท {product.setName} ยท {product.conditionLabel}</p>
           </div>
-          <Button type="button" variant="outline" size="icon" aria-label="แชร์">
+          <Button type="button" variant="outline" size="icon" aria-label="เนเธเธฃเน">
             <Share2 className="size-4" />
           </Button>
         </div>
@@ -253,8 +246,8 @@ const AuctionDetailClient = ({ product: initialProduct, viewer }: AuctionDetailC
             <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-2xl font-black">รายละเอียดการ์ด</h2>
-                  <p className="text-sm text-slate-500">ข้อมูลจากร้านค้าและคลังการ์ดที่ใช้ลงประมูล</p>
+                  <h2 className="text-2xl font-black">เธฃเธฒเธขเธฅเธฐเน€เธญเธตเธขเธ”เธเธฒเธฃเนเธ”</h2>
+                  <p className="text-sm text-slate-500">เธเนเธญเธกเธนเธฅเธเธฒเธเธฃเนเธฒเธเธเนเธฒเนเธฅเธฐเธเธฅเธฑเธเธเธฒเธฃเนเธ”เธ—เธตเนเนเธเนเธฅเธเธเธฃเธฐเธกเธนเธฅ</p>
                 </div>
                 <Badge variant="outline">{product.rarity}</Badge>
               </div>
@@ -267,64 +260,64 @@ const AuctionDetailClient = ({ product: initialProduct, viewer }: AuctionDetailC
                 ))}
               </div>
               <p className="mt-5 text-sm leading-7 text-slate-600">
-                {product.description ?? "ข้อมูลตัวอย่างสำหรับทดสอบระบบประมูล ตรวจสอบรูปสินค้าและรายละเอียดก่อนเสนอราคา"}
+                {product.description ?? "เธเนเธญเธกเธนเธฅเธ•เธฑเธงเธญเธขเนเธฒเธเธชเธณเธซเธฃเธฑเธเธ—เธ”เธชเธญเธเธฃเธฐเธเธเธเธฃเธฐเธกเธนเธฅ เธ•เธฃเธงเธเธชเธญเธเธฃเธนเธเธชเธดเธเธเนเธฒเนเธฅเธฐเธฃเธฒเธขเธฅเธฐเน€เธญเธตเธขเธ”เธเนเธญเธเน€เธชเธเธญเธฃเธฒเธเธฒ"}
               </p>
             </section>
           </div>
 
           <aside className="h-fit rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_24px_80px_rgba(15,23,42,.10)] lg:sticky lg:top-24">
             <Link href={`/shops/${product.sellerShop.slug}`} className="mb-5 flex items-center justify-between rounded-2xl bg-slate-50 p-4 transition hover:bg-slate-100">
-              <span className="inline-flex items-center gap-2"><Store className="size-4" />ขายโดย: {product.sellerShop.name}</span>
+              <span className="inline-flex items-center gap-2"><Store className="size-4" />เธเธฒเธขเนเธ”เธข: {product.sellerShop.name}</span>
               <ChevronRight className="size-4" />
             </Link>
             <div className="rounded-3xl bg-slate-950 p-5 text-center text-white">
-              <span className="text-sm text-slate-300">ราคาปัจจุบัน</span>
-              <strong className="mt-2 block text-3xl text-primary">{topBid ? money(product.currentPriceCents) : "ยังไม่มีผู้เข้าร่วมประมูล"}</strong>
+              <span className="text-sm text-slate-300">เธฃเธฒเธเธฒเธเธฑเธเธเธธเธเธฑเธ</span>
+              <strong className="mt-2 block text-3xl text-primary">{topBid ? money(product.currentPriceCents) : "เธขเธฑเธเนเธกเนเธกเธตเธเธนเนเน€เธเนเธฒเธฃเนเธงเธกเธเธฃเธฐเธกเธนเธฅ"}</strong>
             </div>
             <CountdownPill remaining={remaining} />
             <p className="mt-3 text-center text-xs leading-6 text-slate-500">
-              หากมี bid ในช่วง 15 วินาทีสุดท้าย ระบบจะต่อเวลาอีก 15 วินาทีอัตโนมัติ ถ้าไม่มีคนบิดต่อ ผู้เสนอราคาล่าสุดจะชนะเมื่อหมดเวลา
+              เธซเธฒเธเธกเธต bid เนเธเธเนเธงเธ 15 เธงเธดเธเธฒเธ—เธตเธชเธธเธ”เธ—เนเธฒเธข เธฃเธฐเธเธเธเธฐเธ•เนเธญเน€เธงเธฅเธฒเธญเธตเธ 15 เธงเธดเธเธฒเธ—เธตเธญเธฑเธ•เนเธเธกเธฑเธ•เธด เธ–เนเธฒเนเธกเนเธกเธตเธเธเธเธดเธ”เธ•เนเธญ เธเธนเนเน€เธชเธเธญเธฃเธฒเธเธฒเธฅเนเธฒเธชเธธเธ”เธเธฐเธเธเธฐเน€เธกเธทเนเธญเธซเธกเธ”เน€เธงเธฅเธฒ
             </p>
             <div className="mt-5 grid gap-3">
-              <label className="text-sm font-semibold" htmlFor="bidAmount">ใส่ราคาประมูลของคุณ</label>
+              <label className="text-sm font-semibold" htmlFor="bidAmount">เนเธชเนเธฃเธฒเธเธฒเธเธฃเธฐเธกเธนเธฅเธเธญเธเธเธธเธ“</label>
               <Input
                 id="bidAmount"
                 type="number"
                 min={Math.round(product.nextBidCents / 100)}
                 value={bidAmount}
                 onChange={(event) => setBidAmount(event.target.value)}
-                placeholder={`ยอดขั้นต่ำ ${money(product.nextBidCents)}`}
+                placeholder={`เธขเธญเธ”เธเธฑเนเธเธ•เนเธณ ${money(product.nextBidCents)}`}
               />
-              <Button type="button" className="h-11" onClick={submitBid}>บิด</Button>
+              <Button type="button" className="h-11" onClick={submitBid}>เธเธดเธ”</Button>
               <Button type="button" variant="outline" className={cn(favorite && "border-primary text-primary")} onClick={toggleFavorite}>
                 <Heart className={cn("size-4", favorite && "fill-current")} data-icon="inline-start" />
-                {favorite ? "ติดตามอยู่" : "เพิ่มรายการโปรด"}
+                {favorite ? "เธ•เธดเธ”เธ•เธฒเธกเธญเธขเธนเน" : "เน€เธเธดเนเธกเธฃเธฒเธขเธเธฒเธฃเนเธเธฃเธ”"}
               </Button>
               <p className="rounded-2xl bg-slate-50 p-3 text-sm leading-6 text-slate-600">{notice}</p>
             </div>
             <div className="mt-5 grid gap-3 text-sm">
-              <TrustRow icon={<Bell className="size-4" />} text="แจ้งเตือนเมื่อมีคนบิดทับและช่วง 5 นาทีสุดท้าย" />
-              <TrustRow icon={<ShieldCheck className="size-4" />} text="ผู้ชนะต้องชำระเงินภายใน 24 ชั่วโมง" />
-              <TrustRow icon={<CheckCircle2 className="size-4" />} text="ร้านค้าต้องจัดส่งภายใน SLA หลังชำระเงิน" />
+              <TrustRow icon={<Bell className="size-4" />} text="เนเธเนเธเน€เธ•เธทเธญเธเน€เธกเธทเนเธญเธกเธตเธเธเธเธดเธ”เธ—เธฑเธเนเธฅเธฐเธเนเธงเธ 5 เธเธฒเธ—เธตเธชเธธเธ”เธ—เนเธฒเธข" />
+              <TrustRow icon={<ShieldCheck className="size-4" />} text="เธเธนเนเธเธเธฐเธ•เนเธญเธเธเธณเธฃเธฐเน€เธเธดเธเธ เธฒเธขเนเธ 24 เธเธฑเนเธงเนเธกเธ" />
+              <TrustRow icon={<CheckCircle2 className="size-4" />} text="เธฃเนเธฒเธเธเนเธฒเธ•เนเธญเธเธเธฑเธ”เธชเนเธเธ เธฒเธขเนเธ SLA เธซเธฅเธฑเธเธเธณเธฃเธฐเน€เธเธดเธ" />
             </div>
           </aside>
         </section>
 
         <section className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
           <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-2xl font-black">ประวัติการประมูล</h2>
+            <h2 className="text-2xl font-black">เธเธฃเธฐเธงเธฑเธ•เธดเธเธฒเธฃเธเธฃเธฐเธกเธนเธฅ</h2>
             <div className="mt-5 overflow-hidden rounded-2xl border">
               <table className="w-full text-left text-sm">
                 <thead className="bg-slate-50">
                   <tr>
-                    <th className="p-3">ผู้ร่วมประมูล</th>
-                    <th className="p-3">ราคาที่ประมูล</th>
-                    <th className="p-3">วัน/เวลา</th>
+                    <th className="p-3">เธเธนเนเธฃเนเธงเธกเธเธฃเธฐเธกเธนเธฅ</th>
+                    <th className="p-3">เธฃเธฒเธเธฒเธ—เธตเนเธเธฃเธฐเธกเธนเธฅ</th>
+                    <th className="p-3">เธงเธฑเธ/เน€เธงเธฅเธฒ</th>
                   </tr>
                 </thead>
                 <tbody>
                   {product.bids.length === 0 ? (
-                    <tr><td className="p-6 text-center text-slate-500" colSpan={3}>ยังไม่มีประวัติการประมูล</td></tr>
+                    <tr><td className="p-6 text-center text-slate-500" colSpan={3}>เธขเธฑเธเนเธกเนเธกเธตเธเธฃเธฐเธงเธฑเธ•เธดเธเธฒเธฃเธเธฃเธฐเธกเธนเธฅ</td></tr>
                   ) : (
                     product.bids.map((bid) => (
                       <tr key={bid.id} className="border-t">
@@ -340,18 +333,19 @@ const AuctionDetailClient = ({ product: initialProduct, viewer }: AuctionDetailC
           </div>
           <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-black">สรุปการขาย</h2>
-              <span className="text-sm font-semibold text-primary">ราคาเปิด {money(product.openingPriceCents)}</span>
+              <h2 className="text-2xl font-black">เธชเธฃเธธเธเธเธฒเธฃเธเธฒเธข</h2>
+              <span className="text-sm font-semibold text-primary">เธฃเธฒเธเธฒเน€เธเธดเธ” {money(product.openingPriceCents)}</span>
             </div>
             <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
-              <Metric label="ผู้ติดตาม" value={`${product.watcherCount.toLocaleString("th-TH")} คน`} />
-              <Metric label="รีวิวร้าน" value={`${product.sellerShop.rating.toFixed(1)} (${product.sellerShop.reviewCount})`} />
+              <Metric label="เธเธนเนเธ•เธดเธ”เธ•เธฒเธก" value={`${product.watcherCount.toLocaleString("th-TH")} เธเธ`} />
+              <Metric label="เธฃเธตเธงเธดเธงเธฃเนเธฒเธ" value={`${product.sellerShop.rating.toFixed(1)} (${product.sellerShop.reviewCount})`} />
             </div>
           </div>
         </section>
       </main>
 
       <AppFooter />
+      {confirmDialog}
     </div>
   );
 };
@@ -359,10 +353,10 @@ const AuctionDetailClient = ({ product: initialProduct, viewer }: AuctionDetailC
 const CountdownPill = ({ remaining }: { remaining: ReturnType<typeof getRemaining> }) => (
   <div className="mt-5 grid grid-cols-4 rounded-full bg-[#191919] px-3 py-3 text-center text-white">
     {[
-      ["วัน", remaining?.days ?? 0],
-      ["ชั่วโมง", remaining?.hours ?? 0],
-      ["นาที", remaining?.minutes ?? 0],
-      ["วินาที", remaining?.seconds ?? 0],
+      ["เธงเธฑเธ", remaining?.days ?? 0],
+      ["เธเธฑเนเธงเนเธกเธ", remaining?.hours ?? 0],
+      ["เธเธฒเธ—เธต", remaining?.minutes ?? 0],
+      ["เธงเธดเธเธฒเธ—เธต", remaining?.seconds ?? 0],
     ].map(([label, value]) => (
       <span key={label} className="border-r border-white/15 last:border-r-0">
         <strong className="block text-base leading-none">{String(value).padStart(2, "0")}</strong>
@@ -387,3 +381,5 @@ const Metric = ({ label, value }: { label: string; value: string }) => (
 );
 
 export { AuctionDetailClient };
+
+

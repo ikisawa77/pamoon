@@ -1,0 +1,55 @@
+<svg width="1440" height="960" viewBox="0 0 1440 960" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="arenaGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1010 220) rotate(134) scale(780 540)">
+      <stop stop-color="#00E5FF" stop-opacity=".42"/>
+      <stop offset=".46" stop-color="#D61F3C" stop-opacity=".24"/>
+      <stop offset="1" stop-color="#070A14" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="cardFoil" x1="504" y1="170" x2="838" y2="690" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7D46A"/>
+      <stop offset=".34" stop-color="#00E5FF"/>
+      <stop offset=".7" stop-color="#D61F3C"/>
+      <stop offset="1" stop-color="#141827"/>
+    </linearGradient>
+  </defs>
+  <rect width="1440" height="960" fill="#070A14"/>
+  <rect width="1440" height="960" fill="url(#arenaGlow)"/>
+  <path d="M105 840C335 705 514 654 720 654C926 654 1105 705 1335 840" stroke="#00E5FF" stroke-opacity=".18" stroke-width="2"/>
+  <path d="M145 780C354 674 535 632 720 632C905 632 1086 674 1295 780" stroke="#D61F3C" stroke-opacity=".22" stroke-width="2"/>
+  <rect x="72" y="48" width="1296" height="74" rx="22" fill="#111827" fill-opacity=".72" stroke="#253044"/>
+  <rect x="98" y="70" width="42" height="42" rx="12" fill="#D61F3C"/>
+  <text x="156" y="97" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="26" font-weight="700">BidCard TH</text>
+  <text x="704" y="94" fill="#94A3B8" font-family="Arial, sans-serif" font-size="16">Auctions</text>
+  <text x="810" y="94" fill="#94A3B8" font-family="Arial, sans-serif" font-size="16">Buy Now</text>
+  <text x="920" y="94" fill="#94A3B8" font-family="Arial, sans-serif" font-size="16">Reseller</text>
+  <rect x="1148" y="65" width="168" height="40" rx="14" fill="#00E5FF" fill-opacity=".12" stroke="#00E5FF" stroke-opacity=".55"/>
+  <text x="1185" y="91" fill="#E0F2FE" font-family="Arial, sans-serif" font-size="15" font-weight="700">Start Bidding</text>
+  <text x="88" y="234" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="76" font-weight="800">Neon Arena</text>
+  <text x="88" y="304" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="76" font-weight="800">Card Battles</text>
+  <text x="92" y="358" fill="#94A3B8" font-family="Arial, sans-serif" font-size="22">Live auctions, escrow wallet, reseller shops, and realtime alerts in one cinematic marketplace.</text>
+  <rect x="92" y="410" width="174" height="58" rx="18" fill="#D61F3C"/>
+  <text x="129" y="447" fill="white" font-family="Arial, sans-serif" font-size="18" font-weight="700">เริ่มประมูล</text>
+  <rect x="286" y="410" width="148" height="58" rx="18" fill="#0F172A" stroke="#00E5FF" stroke-opacity=".5"/>
+  <text x="334" y="447" fill="#CFFAFE" font-family="Arial, sans-serif" font-size="18" font-weight="700">ซื้อเลย</text>
+  <g transform="translate(500 148)">
+    <rect x="110" y="18" width="310" height="492" rx="34" fill="url(#cardFoil)" opacity=".95"/>
+    <rect x="132" y="42" width="266" height="448" rx="24" fill="#0B1020" fill-opacity=".75" stroke="white" stroke-opacity=".26"/>
+    <circle cx="263" cy="236" r="118" fill="#00E5FF" fill-opacity=".12" stroke="#00E5FF" stroke-opacity=".32"/>
+    <path d="M154 351L358 123L384 472L154 351Z" fill="#F8FAFC" fill-opacity=".12" stroke="#FACC15" stroke-opacity=".42"/>
+    <text x="164" y="440" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="28" font-weight="800">Hologram SEC</text>
+    <text x="164" y="468" fill="#94A3B8" font-family="Arial, sans-serif" font-size="15">Live Auction • 00:04:59</text>
+  </g>
+  <g opacity=".95">
+    <rect x="92" y="604" width="380" height="178" rx="26" fill="#0F172A" fill-opacity=".72" stroke="#253044"/>
+    <text x="124" y="652" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="22" font-weight="700">Live Auction Carousel</text>
+    <text x="124" y="690" fill="#94A3B8" font-family="Arial, sans-serif" font-size="16">Countdown cards, bid CTA, watchlist email alerts.</text>
+    <rect x="124" y="722" width="116" height="32" rx="10" fill="#FACC15"/>
+    <text x="152" y="744" fill="#111827" font-family="Arial, sans-serif" font-size="14" font-weight="700">฿12,750</text>
+    <rect x="510" y="604" width="380" height="178" rx="26" fill="#0F172A" fill-opacity=".72" stroke="#253044"/>
+    <text x="542" y="652" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="22" font-weight="700">Community Features</text>
+    <text x="542" y="690" fill="#94A3B8" font-family="Arial, sans-serif" font-size="16">Reseller ranks, trusted shops, chat after checkout.</text>
+    <rect x="928" y="604" width="380" height="178" rx="26" fill="#0F172A" fill-opacity=".72" stroke="#253044"/>
+    <text x="960" y="652" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="22" font-weight="700">Wallet + SLA</text>
+    <text x="960" y="690" fill="#94A3B8" font-family="Arial, sans-serif" font-size="16">Escrow, shipping countdown, refund queue.</text>
+  </g>
+</svg>
