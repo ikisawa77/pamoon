@@ -94,7 +94,7 @@ const contentByType = (contents: HomeContentItem[], type: HomeContentItem["type"
 
 const formatEndsAt = (value: string | null) => {
   if (!value) {
-    return "เธฃเธญเธเธณเธซเธเธ”เน€เธงเธฅเธฒ";
+    return "รอกำหนดเวลา";
   }
 
   return new Intl.DateTimeFormat("th-TH", {
@@ -104,11 +104,11 @@ const formatEndsAt = (value: string | null) => {
 };
 
 const dockItems: Array<{ value: DockFilter; label: string; icon: LucideIcon }> = [
-  { value: "all", label: "เธ—เธฑเนเธเธซเธกเธ”", icon: Home },
-  { value: "auction", label: "เธเธฃเธฐเธกเธนเธฅ", icon: Trophy },
-  { value: "buy", label: "เธเธทเนเธญเน€เธฅเธข", icon: CreditCard },
-  { value: "rare", label: "เธซเธฒเธขเธฒเธ", icon: Gem },
-  { value: "shops", label: "เธฃเนเธฒเธเธเนเธฒ", icon: Store },
+  { value: "all", label: "ทั้งหมด", icon: Home },
+  { value: "auction", label: "ประมูล", icon: Trophy },
+  { value: "buy", label: "ซื้อเลย", icon: CreditCard },
+  { value: "rare", label: "หายาก", icon: Gem },
+  { value: "shops", label: "ร้านค้า", icon: Store },
 ];
 
 const HomepageExperience = ({
@@ -152,12 +152,12 @@ const HomepageExperience = ({
 
   const dockRailTitle =
     activeFilter === "auction"
-      ? "เธเธฃเธฐเธกเธนเธฅเธเธฒเธเธ•เธฑเธงเธเธฃเธญเธ"
+      ? "ประมูลจากตัวกรอง"
       : activeFilter === "rare"
-        ? "เธเธฒเธฃเนเธ”เธซเธฒเธขเธฒเธเธเธฒเธเธ•เธฑเธงเธเธฃเธญเธ"
+        ? "การ์ดหายากจากตัวกรอง"
         : activeFilter === "shops"
-          ? "เธชเธดเธเธเนเธฒเธ•เธฒเธกเธฃเนเธฒเธเธเนเธฒเธ—เธตเนเธเนเธเธซเธฒ"
-          : "เธฅเธเธเธฒเธขเธฅเนเธฒเธชเธธเธ”";
+          ? "สินค้าตามร้านค้าที่ค้นหา"
+          : "ลงขายล่าสุด";
 
   return (
     <div className="retro-shell min-h-screen text-foreground">
@@ -173,25 +173,25 @@ const HomepageExperience = ({
                 {heroSlide?.title ?? "BidCard TH"}
               </h1>
               <p className="mt-5 max-w-xl text-lg leading-8 text-muted-foreground">
-                {heroSlide?.subtitle ?? "เธ•เธฅเธฒเธ”เธเธฃเธฐเธกเธนเธฅเนเธฅเธฐเธเธทเนเธญเธเธฒเธขเธเธฒเธฃเนเธ”เธ—เธตเนเน€เธเธทเนเธญเธกเธชเธกเธฒเธเธดเธ Reseller เธเธฃเธฐเน€เธเนเธฒเน€เธเธดเธ เนเธเนเธเน€เธ•เธทเธญเธ เนเธฅเธฐเธฃเธฐเธเธเธซเธฅเธฑเธเธเนเธฒเธเนเธงเนเนเธเธเธฃเธฐเธชเธเธเธฒเธฃเธ“เนเน€เธ”เธตเธขเธง"}
+                {heroSlide?.subtitle ?? "ตลาดประมูลและซื้อขายการ์ดที่เชื่อมสมาชิก Reseller กระเป๋าเงิน แจ้งเตือน และระบบหลังบ้านไว้ในประสบการณ์เดียว"}
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
                 <Button asChild size="lg" className="shadow-lg shadow-primary/25">
                   <Link href={heroSlide?.href ?? "/auctions"}>
-                    เน€เธฃเธดเนเธกเธเธฃเธฐเธกเธนเธฅ <ChevronRight data-icon="inline-end" />
+                    เริ่มประมูล <ChevronRight data-icon="inline-end" />
                   </Link>
                 </Button>
                 <Button asChild size="lg" variant="secondary">
-                  <Link href="/buy-now">เธเธทเนเธญเน€เธฅเธข</Link>
+                  <Link href="/buy-now">ซื้อเลย</Link>
                 </Button>
                 <Button asChild size="lg" variant="outline">
-                  <Link href="/register">เธชเธกเธฑเธเธฃ Reseller</Link>
+                  <Link href="/register">สมัคร Reseller</Link>
                 </Button>
               </div>
               <div className="mt-10 grid max-w-xl grid-cols-3 gap-4 border-t border-white/10 pt-5 text-sm text-muted-foreground">
-                <span><strong className="block text-2xl text-foreground">{endingAuctions.length}</strong>เนเธเธฅเนเธซเธกเธ”เน€เธงเธฅเธฒ</span>
-                <span><strong className="block text-2xl text-foreground">{latestSales.length}</strong>เธฅเธเธเธฒเธขเธฅเนเธฒเธชเธธเธ”</span>
-                <span><strong className="block text-2xl text-foreground">{recommendedShops.length}</strong>เธฃเนเธฒเธเนเธเธฐเธเธณ</span>
+                <span><strong className="block text-2xl text-foreground">{endingAuctions.length}</strong>ใกล้หมดเวลา</span>
+                <span><strong className="block text-2xl text-foreground">{latestSales.length}</strong>ลงขายล่าสุด</span>
+                <span><strong className="block text-2xl text-foreground">{recommendedShops.length}</strong>ร้านแนะนำ</span>
               </div>
             </div>
 
@@ -206,7 +206,7 @@ const HomepageExperience = ({
               <div className="neon-panel absolute -bottom-5 left-4 right-4 rounded-2xl p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <span className="text-xs text-muted-foreground">เธเธฃเธฐเธกเธนเธฅเน€เธ”เนเธ</span>
+                    <span className="text-xs text-muted-foreground">ประมูลเด่น</span>
                     <strong className="block truncate">{endingAuctions[0]?.title ?? "Rare Card Auction"}</strong>
                   </div>
                   <strong className="text-bid">{moneyFromCents(endingAuctions[0]?.currentPriceCents ?? 0)}</strong>
@@ -221,7 +221,7 @@ const HomepageExperience = ({
                     key={slide.id}
                     type="button"
                     className={cn("h-2.5 rounded-full bg-white/30 transition-all", index === activeSlide ? "w-10 bg-white" : "w-2.5")}
-                    aria-label={`เน€เธเธดเธ”เธชเนเธฅเธ”เน ${index + 1}`}
+                    aria-label={`เปิดสไลด์ ${index + 1}`}
                     onClick={() => setActiveSlide(index)}
                   />
                 ))}
@@ -233,9 +233,9 @@ const HomepageExperience = ({
         <section className="mx-auto grid max-w-7xl gap-8 px-4 py-10 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0 space-y-12">
             <PromoStrip promotions={promotions} />
-            <ProductRail title="เธเธฃเธฐเธกเธนเธฅเนเธเธฅเนเธซเธกเธ”เน€เธงเธฅเธฒ" icon={Clock3} products={endingAuctions} href="/auctions" />
+            <ProductRail title="ประมูลใกล้หมดเวลา" icon={Clock3} products={endingAuctions} href="/auctions" />
             <ProductRail title={dockRailTitle} icon={ShoppingBag} products={filteredDockProducts} href={activeFilter === "auction" ? "/auctions" : "/buy-now"} />
-            <ProductRail title="เธเธฃเธฐเธกเธนเธฅเธฅเนเธฒเธชเธธเธ”" icon={Flame} products={latestAuctions} href="/auctions" />
+            <ProductRail title="ประมูลล่าสุด" icon={Flame} products={latestAuctions} href="/auctions" />
             <ArticleSection articles={articles} />
           </div>
 
@@ -243,8 +243,8 @@ const HomepageExperience = ({
             <section className="neon-panel rounded-2xl p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold">เธฃเนเธฒเธเธเนเธฒเนเธเธฐเธเธณ</h2>
-                  <p className="text-sm text-muted-foreground">เธเธฑเธ”เธเธฒเธฃเธฃเธฒเธขเธเธฒเธฃเน€เธ”เนเธเนเธ”เนเธเธฒเธเธซเธฅเธฑเธเธเนเธฒเธ</p>
+                  <h2 className="text-lg font-semibold">ร้านค้าแนะนำ</h2>
+                  <p className="text-sm text-muted-foreground">จัดการรายการเด่นได้จากหลังบ้าน</p>
                 </div>
                 <ShieldCheck className="text-primary" />
               </div>
@@ -257,14 +257,14 @@ const HomepageExperience = ({
                     <div className="min-w-0 flex-1">
                       <strong className="block truncate">{shop.name}</strong>
                       <span className="text-xs text-muted-foreground">
-                        {shop.rating.toFixed(1)} เธเธฐเนเธเธ / {shop._count.products} เธฃเธฒเธขเธเธฒเธฃ
+                        {shop.rating.toFixed(1)} คะแนน / {shop._count.products} รายการ
                       </span>
                     </div>
                   </Link>
                 ))}
                 {featuredShopContents.map((shop) => (
                   <Link key={shop.id} href={shop.href ?? "/shops"} className="block rounded-xl border border-white/10 bg-white/[0.03] p-3 transition hover:bg-white/[0.07]">
-                    <Badge variant="outline">{shop.badge ?? "เนเธเธฐเธเธณ"}</Badge>
+                    <Badge variant="outline">{shop.badge ?? "แนะนำ"}</Badge>
                     <strong className="mt-2 block">{shop.title}</strong>
                     <span className="text-sm text-muted-foreground">{shop.subtitle}</span>
                   </Link>
@@ -303,7 +303,7 @@ const ProductRail = ({ title, icon: Icon, products, href }: ProductRailProps) =>
         <h2 className="text-2xl font-black">{title}</h2>
       </div>
       <Button asChild variant="outline" size="sm">
-        <Link href={href}>เธ”เธนเธ—เธฑเนเธเธซเธกเธ”</Link>
+        <Link href={href}>ดูทั้งหมด</Link>
       </Button>
     </div>
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -323,15 +323,15 @@ const ProductCard = ({ product, index }: { product: HomeProduct; index: number }
         {product.imageUrl ? (
           <Image src={product.imageUrl} alt={product.title} fill sizes="(min-width: 1280px) 18vw, 50vw" className="object-cover transition group-hover:scale-105" />
         ) : null}
-        <Badge className="absolute left-3 top-3">{product.mode === "AUCTION" ? "เธเธฃเธฐเธกเธนเธฅ" : "เธเธทเนเธญเน€เธฅเธข"}</Badge>
+        <Badge className="absolute left-3 top-3">{product.mode === "AUCTION" ? "ประมูล" : "ซื้อเลย"}</Badge>
         <Badge variant="secondary" className="absolute right-3 top-3">{product.rarity}</Badge>
       </div>
       <div className="p-4">
         <h3 className="line-clamp-2 font-semibold">{product.title}</h3>
-        <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{product.cardCode} ยท {product.setName}</p>
+        <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{product.cardCode} • {product.setName}</p>
         <div className="mt-4 flex items-end justify-between gap-3">
           <div>
-            <span className="block text-xs text-muted-foreground">{product.mode === "AUCTION" ? "เธฃเธฒเธเธฒเธเธฑเธเธเธธเธเธฑเธ" : "เธฃเธฒเธเธฒ"}</span>
+            <span className="block text-xs text-muted-foreground">{product.mode === "AUCTION" ? "ราคาปัจจุบัน" : "ราคา"}</span>
             <strong className="text-lg text-bid">{moneyFromCents(product.currentPriceCents)}</strong>
           </div>
           <span className="text-right text-xs text-muted-foreground">
@@ -345,9 +345,9 @@ const ProductCard = ({ product, index }: { product: HomeProduct; index: number }
 
 const PromoStrip = ({ promotions }: { promotions: HomeContentItem[] }) => {
   const items = promotions.length > 0 ? promotions.slice(0, 3) : [
-    { id: "wallet", title: "เน€เธ•เธดเธกเน€เธเธดเธเธเธฃเนเธญเธกเธเธดเธ”", subtitle: "เธฃเธญเธเธฃเธฑเธ wallet เนเธฅเธฐ escrow เธชเธณเธซเธฃเธฑเธเธเธณเธชเธฑเนเธเธเธทเนเธญ", href: "/account", badge: "Wallet" },
-    { id: "reseller", title: "เน€เธเธดเธ”เธฃเนเธฒเธ Reseller", subtitle: "เธฅเธเธเธฒเธขเนเธฅเธฐเธฅเธเธเธฃเธฐเธกเธนเธฅเนเธ”เนเธเธฒเธเธเธฑเธเธเธตเน€เธ”เธตเธขเธง", href: "/register", badge: "Reseller" },
-    { id: "notify", title: "เนเธเนเธเน€เธ•เธทเธญเธเน€เธฃเธตเธขเธฅเนเธ—เธกเน", subtitle: "เธเธฃเธฐเธ”เธดเนเธเนเธฅเธฐเธญเธตเน€เธกเธฅเธชเธณเธซเธฃเธฑเธ bid, order เนเธฅเธฐ SLA", href: "/notifications", badge: "Realtime" },
+    { id: "wallet", title: "เติมเงินพร้อมบิด", subtitle: "รองรับ wallet และ escrow สำหรับคำสั่งซื้อ", href: "/account", badge: "Wallet" },
+    { id: "reseller", title: "เปิดร้าน Reseller", subtitle: "ลงขายและลงประมูลได้จากบัญชีเดียว", href: "/register", badge: "Reseller" },
+    { id: "notify", title: "แจ้งเตือนเรียลไทม์", subtitle: "กระดิ่งและอีเมลสำหรับ bid, order และ SLA", href: "/notifications", badge: "Realtime" },
   ] satisfies Array<Pick<HomeContentItem, "id" | "title" | "subtitle" | "href" | "badge">>;
 
   return (
@@ -367,7 +367,7 @@ const ArticleSection = ({ articles }: { articles: HomeContentItem[] }) => (
   <section>
     <div className="mb-4 flex items-center gap-2">
       <Newspaper className="size-5 text-primary" />
-      <h2 className="text-2xl font-black">เธเธ—เธเธงเธฒเธกเธ—เธตเนเธเนเธฒเธชเธเนเธ</h2>
+      <h2 className="text-2xl font-black">บทความที่น่าสนใจ</h2>
     </div>
     <div className="grid gap-4 md:grid-cols-3">
       {(articles.length > 0 ? articles.slice(0, 3) : []).map((article) => (
@@ -381,7 +381,7 @@ const ArticleSection = ({ articles }: { articles: HomeContentItem[] }) => (
       ))}
       {articles.length === 0 ? (
         <div className="neon-panel rounded-2xl p-5 md:col-span-3">
-          <p className="text-sm text-muted-foreground">เธขเธฑเธเนเธกเนเธกเธตเธเธ—เธเธงเธฒเธกเน€เธ”เนเธ เธเธนเนเธ”เธนเนเธฅเธชเธฒเธกเธฒเธฃเธ–เน€เธเธดเนเธกเธเธ—เธเธงเธฒเธกเธเธฒเธเธซเธฅเธฑเธเธเนเธฒเธเนเธ”เน</p>
+          <p className="text-sm text-muted-foreground">ยังไม่มีบทความเด่น ผู้ดูแลสามารถเพิ่มบทความจากหลังบ้านได้</p>
         </div>
       ) : null}
     </div>
@@ -400,7 +400,7 @@ interface MacFilterDockProps {
 const MacFilterDock = ({ open, activeFilter, query, onOpenChange, onFilterChange, onQueryChange }: MacFilterDockProps) => (
   <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 lg:left-5 lg:top-1/2 lg:translate-x-0 lg:-translate-y-1/2">
     <div className={cn("neon-panel flex items-end gap-2 rounded-3xl p-2 transition-all lg:flex-col", open && "items-stretch p-3")}>
-      <Button type="button" size="icon" className="rounded-2xl" onClick={() => onOpenChange(!open)} aria-label="เน€เธเธดเธ”เธ•เธฑเธงเธเธฃเธญเธ">
+      <Button type="button" size="icon" className="rounded-2xl" onClick={() => onOpenChange(!open)} aria-label="เปิดตัวกรอง">
         {open ? <X /> : <SlidersHorizontal />}
       </Button>
       {dockItems.map((item) => (
@@ -421,7 +421,7 @@ const MacFilterDock = ({ open, activeFilter, query, onOpenChange, onFilterChange
       {open ? (
         <div className="relative w-56 lg:w-64">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={query} onChange={(event) => onQueryChange(event.target.value)} className="pl-9" placeholder="เธเนเธเธซเธฒเธเธฒเธฃเนเธ”/เธฃเนเธฒเธเธเนเธฒ" />
+          <Input value={query} onChange={(event) => onQueryChange(event.target.value)} className="pl-9" placeholder="ค้นหาการ์ด/ร้านค้า" />
         </div>
       ) : (
         <div className="flex size-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-muted-foreground">

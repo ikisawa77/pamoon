@@ -157,7 +157,7 @@ const compactCurrencyFormatter = new Intl.NumberFormat("th-TH", {
 const formatMoney = (value: number, compact = false) =>
   (compact ? compactCurrencyFormatter : currencyFormatter)
     .format(value)
-    .replace("THB", "เธฟ");
+    .replace("THB", "฿");
 
 const categoryOptions: Array<ProductCategory | "all"> = ["all", ...cardSetDefinitions.map((set) => set.category)];
 const categoryLabels = new Map<ProductCategory | "all", string>([
@@ -196,7 +196,7 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
     maxPrice: "",
   });
   const [sortMode, setSortMode] = useState<SortMode>("ending");
-  const [notice, setNotice] = useState("เธเธฃเธฐเธกเธนเธฅเธ•เธฑเธงเธญเธขเนเธฒเธ: เธเธฒเธฃเนเธ”เธ—เธธเธเนเธเธซเธกเธ”เน€เธงเธฅเธฒเธเธฃเธฐเธกเธนเธฅเธญเธตเธ 2 เธเธต เธงเธฑเธเธ—เธตเน 28 เน€เธก.เธข. 2028");
+  const [notice, setNotice] = useState("ประมูลตัวอย่าง: การ์ดทุกใบหมดเวลาประมูลอีก 2 ปี วันที่ 28 เม.ย. 2028");
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
   const [listingOpen, setListingOpen] = useState(false);
@@ -242,13 +242,13 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
 
   const handleProductAction = async (product: AuctionProduct) => {
     if (isGuest) {
-      setNotice(isAdmin ? "เธเธฑเธเธเธตเธเธนเนเธ”เธนเนเธฅเนเธเนเธ”เธนเนเธฅเธฃเธฐเธเธเธซเธฅเธฑเธเธเนเธฒเธเน€เธ—เนเธฒเธเธฑเนเธ เนเธกเนเนเธเนเธเธทเนเธญเธซเธฃเธทเธญเธเธฃเธฐเธกเธนเธฅเธชเธดเธเธเนเธฒ" : "เธเธฃเธธเธ“เธฒเธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธเธซเธฃเธทเธญเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธเธเนเธญเธเธเธทเนเธญเนเธฅเธฐเน€เธชเธเธญเธฃเธฒเธเธฒ");
+      setNotice(isAdmin ? "บัญชีผู้ดูแลใช้ดูแลระบบหลังบ้านเท่านั้น ไม่ใช้ซื้อหรือประมูลสินค้า" : "กรุณาสมัครสมาชิกหรือเข้าสู่ระบบก่อนซื้อและเสนอราคา");
       return;
     }
 
     if (product.mode === "buy") {
       if (wallet.balance < product.currentPrice) {
-        setNotice(`เธขเธญเธ”เน€เธเธดเธเนเธกเนเธเธญเธชเธณเธซเธฃเธฑเธเธเธทเนเธญ ${product.title}`);
+        setNotice(`ยอดเงินไม่พอสำหรับซื้อ ${product.title}`);
         setTopUpOpen(true);
         return;
       }
@@ -268,7 +268,7 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
           const result = (await response.json()) as CreateOrderResponse;
 
           if (!response.ok || !result.ok || !result.user) {
-            setNotice(result.error?.message ?? "เธชเธฑเนเธเธเธทเนเธญเนเธกเนเธชเธณเน€เธฃเนเธ");
+            setNotice(result.error?.message ?? "สั่งซื้อไม่สำเร็จ");
             return;
           }
 
@@ -281,19 +281,19 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
           }));
           setProducts((current) => current.filter((item) => item.id !== product.id));
         } catch {
-          setNotice("เน€เธเธทเนเธญเธกเธ•เนเธญ API เธเธณเธชเธฑเนเธเธเธทเนเธญเนเธกเนเนเธ”เน");
+          setNotice("เชื่อมต่อ API คำสั่งซื้อไม่ได้");
           return;
         }
       } else {
         setWallet((current) => ({ ...current, balance: current.balance - product.currentPrice }));
       }
-      addActivity("เธเธทเนเธญเธชเธดเธเธเนเธฒ", `${product.title} ${formatMoney(product.currentPrice, true)}`);
-      setNotice(`เธเธทเนเธญเธชเธณเน€เธฃเนเธ: ${product.title} เธเธฒเธ ${product.seller}`);
+      addActivity("ซื้อสินค้า", `${product.title} ${formatMoney(product.currentPrice, true)}`);
+      setNotice(`ซื้อสำเร็จ: ${product.title} จาก ${product.seller}`);
       return;
     }
 
     if (wallet.balance + wallet.bidLimit < product.nextBid) {
-      setNotice(`เธขเธญเธ”เน€เธเธดเธเธซเธฃเธทเธญเธงเธเน€เธเธดเธเธเธฃเธฐเธกเธนเธฅเนเธกเนเธเธญเธชเธณเธซเธฃเธฑเธ ${product.title}`);
+      setNotice(`ยอดเงินหรือวงเงินประมูลไม่พอสำหรับ ${product.title}`);
       setTopUpOpen(true);
       return;
     }
@@ -331,7 +331,7 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
         const result = (await response.json()) as BidResponse;
 
         if (!response.ok || !result.ok || !result.product) {
-          setNotice(result.error?.message ?? "เน€เธชเธเธญเธฃเธฒเธเธฒเนเธกเนเธชเธณเน€เธฃเนเธ");
+          setNotice(result.error?.message ?? "เสนอราคาไม่สำเร็จ");
           return;
         }
 
@@ -350,7 +350,7 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
           ),
         );
       } catch {
-        setNotice("เน€เธเธทเนเธญเธกเธ•เนเธญ API เน€เธชเธเธญเธฃเธฒเธเธฒเนเธกเนเนเธ”เน");
+        setNotice("เชื่อมต่อ API เสนอราคาไม่ได้");
         return;
       }
     } else {
@@ -369,19 +369,19 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
     }
 
     setWallet((current) => ({ ...current, bidLimit: Math.max(0, current.bidLimit - product.nextBid) }));
-    addActivity("เน€เธชเธเธญเธฃเธฒเธเธฒ", `${product.title} ${formatMoney(product.nextBid, true)}`);
-    setNotice(`เนเธชเนเธฃเธฒเธเธฒเนเธฅเนเธง: ${product.title} เธฃเธฒเธเธฒเธเธฑเธเธเธธเธเธฑเธ ${formatMoney(product.nextBid, true)}`);
+    addActivity("เสนอราคา", `${product.title} ${formatMoney(product.nextBid, true)}`);
+    setNotice(`ใส่ราคาแล้ว: ${product.title} ราคาปัจจุบัน ${formatMoney(product.nextBid, true)}`);
   };
 
   const handleTopUp = async () => {
     if (isGuest) {
-      setNotice(isAdmin ? "เธเธฑเธเธเธตเธเธนเนเธ”เธนเนเธฅเนเธกเนเธ•เนเธญเธเน€เธ•เธดเธกเน€เธเธดเธเนเธเธซเธเนเธฒเธฃเนเธฒเธ" : "เธเธฃเธธเธ“เธฒเธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธเธซเธฃเธทเธญเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธเธเนเธญเธเน€เธ•เธดเธกเน€เธเธดเธ");
+      setNotice(isAdmin ? "บัญชีผู้ดูแลไม่ต้องเติมเงินในหน้าร้าน" : "กรุณาสมัครสมาชิกหรือเข้าสู่ระบบก่อนเติมเงิน");
       return;
     }
 
     const parsed = topUpSchema.safeParse({ amount: topUpAmount });
     if (!parsed.success) {
-      setNotice("เธเธฃเธธเธ“เธฒเธฃเธฐเธเธธเธเธณเธเธงเธเน€เธ•เธดเธกเน€เธเธดเธเธ•เธฑเนเธเนเธ•เน เธฟ100 เธ–เธถเธ เธฟ50,000");
+      setNotice("กรุณาระบุจำนวนเติมเงินตั้งแต่ ฿100 ถึง ฿50,000");
       return;
     }
 
@@ -400,7 +400,7 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
         const result = (await response.json()) as TopUpResponse;
 
         if (!response.ok || !result.ok || !result.user) {
-          setNotice(result.error?.message ?? "เน€เธ•เธดเธกเน€เธเธดเธเนเธกเนเธชเธณเน€เธฃเนเธ");
+          setNotice(result.error?.message ?? "เติมเงินไม่สำเร็จ");
           return;
         }
 
@@ -412,21 +412,21 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
           bidLimit: Math.round(updatedUser.bidLimitCents / 100),
         }));
       } catch {
-        setNotice("เน€เธเธทเนเธญเธกเธ•เนเธญ API เน€เธ•เธดเธกเน€เธเธดเธเนเธกเนเนเธ”เน");
+        setNotice("เชื่อมต่อ API เติมเงินไม่ได้");
         return;
       }
     } else {
       setWallet((current) => ({ ...current, balance: current.balance + parsed.data.amount }));
     }
 
-    addActivity("เน€เธ•เธดเธกเน€เธเธดเธ", `เน€เธเธดเนเธกเธขเธญเธ” ${formatMoney(parsed.data.amount, true)}`);
-    setNotice(`เน€เธ•เธดเธกเน€เธเธดเธเธชเธณเน€เธฃเนเธ: เธขเธญเธ”เธเธเน€เธซเธฅเธทเธญเนเธซเธกเน ${formatMoney(wallet.balance + parsed.data.amount)}`);
+    addActivity("เติมเงิน", `เพิ่มยอด ${formatMoney(parsed.data.amount, true)}`);
+    setNotice(`เติมเงินสำเร็จ: ยอดคงเหลือใหม่ ${formatMoney(wallet.balance + parsed.data.amount)}`);
     setTopUpOpen(false);
   };
 
   const handleRegisterShop = () => {
     if (isGuest) {
-      setNotice("เธเธฃเธธเธ“เธฒเธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธเธเนเธญเธเธชเนเธเธเธณเธเธญเน€เธเธดเธ”เธฃเนเธฒเธเธเนเธฒ");
+      setNotice("กรุณาสมัครสมาชิกก่อนส่งคำขอเปิดร้านค้า");
       return;
     }
 
@@ -438,18 +438,18 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
     });
 
     if (!parsed.success) {
-      setNotice("เธเนเธญเธกเธนเธฅเธชเธกเธฑเธเธฃเธฃเนเธฒเธเธเนเธฒเธขเธฑเธเนเธกเนเธเธฃเธ");
+      setNotice("ข้อมูลสมัครร้านค้ายังไม่ครบ");
       return;
     }
 
-    addActivity("เธชเธกเธฑเธเธฃเธฃเนเธฒเธเธเนเธฒ", "เธชเนเธเธเธณเธเธญ CardHunter Shop เนเธฅเนเธง");
-    setNotice("เธชเธกเธฑเธเธฃเธฃเนเธฒเธเธเนเธฒเนเธฅเนเธง: เธ—เธตเธกเธเธฒเธเธเธฐเธ•เธฃเธงเธเธชเธญเธเธเนเธญเธกเธนเธฅเธฃเนเธฒเธเธเธญเธเธเธธเธ“");
+    addActivity("สมัครร้านค้า", "ส่งคำขอ CardHunter Shop แล้ว");
+    setNotice("สมัครร้านค้าแล้ว: ทีมงานจะตรวจสอบข้อมูลร้านของคุณ");
     setShopOpen(false);
   };
 
   const handleCreateListing = async (formData: FormData) => {
     if (!canListProducts) {
-      setNotice(isGuest ? "เธเธฃเธธเธ“เธฒเธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธเนเธฅเธฐเธชเธกเธฑเธเธฃเธฃเนเธฒเธเธเนเธฒเธเนเธญเธเธฅเธเธชเธดเธเธเนเธฒ" : "เธเธฑเธเธเธตเธเธตเนเธขเธฑเธเนเธกเนเนเธเนเธฃเนเธฒเธเธเนเธฒ เธเธฃเธธเธ“เธฒเธชเธกเธฑเธเธฃเธฃเนเธฒเธเธเนเธฒเธเนเธญเธเธฅเธเธชเธดเธเธเนเธฒ");
+      setNotice(isGuest ? "กรุณาสมัครสมาชิกและสมัครร้านค้าก่อนลงสินค้า" : "บัญชีนี้ยังไม่ใช่ร้านค้า กรุณาสมัครร้านค้าก่อนลงสินค้า");
       return;
     }
 
@@ -468,7 +468,7 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
     });
 
     if (!parsed.success) {
-      setNotice("เธเธฃเธธเธ“เธฒเธ•เธฃเธงเธเธชเธญเธเธเนเธญเธกเธนเธฅเธชเธดเธเธเนเธฒเธเนเธญเธเธฅเธเธเธฒเธข");
+      setNotice("กรุณาตรวจสอบข้อมูลสินค้าก่อนลงขาย");
       return;
     }
 
@@ -491,13 +491,13 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
         const result = (await response.json()) as CreateProductResponse;
 
         if (!response.ok || !result.ok || !result.product) {
-          setNotice(result.error?.message ?? "เธฅเธเธชเธดเธเธเนเธฒเนเธกเนเธชเธณเน€เธฃเนเธ");
+          setNotice(result.error?.message ?? "ลงสินค้าไม่สำเร็จ");
           return;
         }
 
         createdProductId = result.product.id;
       } catch {
-        setNotice("เน€เธเธทเนเธญเธกเธ•เนเธญ API เธฅเธเธชเธดเธเธเนเธฒเนเธกเนเนเธ”เน");
+        setNotice("เชื่อมต่อ API ลงสินค้าไม่ได้");
         return;
       }
     }
@@ -508,7 +508,7 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
       code: `${listing.code} · ${cardSet.label}`,
       seller: isAdmin ? "Admin Dev Shop" : "CardHunter Shop",
       shopId: isAdmin ? "admin-dev-shop" : "cardhunter",
-      topBidder: "เธฃเธญเธเธนเนเน€เธชเธเธญเธฃเธฒเธเธฒ",
+      topBidder: "รอผู้เสนอราคา",
       mode: listing.mode,
       category: listing.category,
       rarity: listing.rarity,
@@ -516,7 +516,7 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
       currentPrice: price,
       nextBid: price + 250,
       watchers: 0,
-      endsIn: listing.mode === "auction" ? "เน€เธซเธฅเธทเธญ 2 เธเธต (เธซเธกเธ” 28 เน€เธก.เธข. 2028)" : "เธเธฃเนเธญเธกเธชเนเธ",
+      endsIn: listing.mode === "auction" ? "เหลือ 2 ปี (หมด 28 เม.ย. 2028)" : "พร้อมส่ง",
       auctionEndsAt: listing.mode === "auction" ? "2028-04-28T17:00:00.000Z" : null,
       imageUrl: null,
       imagePositionClass: "object-pos-1",
@@ -524,8 +524,8 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
     };
 
     setProducts((current) => [newProduct, ...current]);
-    addActivity("เธฅเธเธชเธดเธเธเนเธฒ", `${listing.title} (${listing.mode === "auction" ? "เธเธฃเธฐเธกเธนเธฅ" : "เธเธทเนเธญเน€เธฅเธข"})`);
-    setNotice(`เธฅเธเธชเธดเธเธเนเธฒเนเธฅเนเธง: ${listing.title} เธเธฃเนเธญเธกเนเธชเธ”เธเนเธเธ•เธฅเธฒเธ”`);
+    addActivity("ลงสินค้า", `${listing.title} (${listing.mode === "auction" ? "ประมูล" : "ซื้อเลย"})`);
+    setNotice(`ลงสินค้าแล้ว: ${listing.title} พร้อมแสดงในตลาด`);
     setListingOpen(false);
   };
 
@@ -557,11 +557,11 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
 
           <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary">
             <span className="font-semibold">{notice}</span>
-            <span className="ml-2 text-muted-foreground">เธ•เธฑเธงเธญเธขเนเธฒเธ: 3 เธฃเนเธฒเธเธเนเธฒ / เธฅเธเธเธฒเธข {buyTotal} เนเธ / เธฅเธเธเธฃเธฐเธกเธนเธฅ {auctionTotal} เนเธ / เธเธฃเธ {rarityOptions.length} rarity</span>
+            <span className="ml-2 text-muted-foreground">ตัวอย่าง: 3 ร้านค้า / ลงขาย {buyTotal} ใบ / ลงประมูล {auctionTotal} ใบ / ครบ {rarityOptions.length} rarity</span>
           </div>
 
           <section className="flex flex-col gap-4">
-            <SectionHeading title="เธเธฃเธฐเธกเธนเธฅเนเธเธฅเนเธเธ" count={endingProducts.length + 20} />
+            <SectionHeading title="ประมูลใกล้จบ" count={endingProducts.length + 20} />
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-4">
               {endingProducts.map((product) => (
                 <AuctionCard key={product.id} product={product} size="feature" onAction={handleProductAction} />
@@ -570,7 +570,7 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
           </section>
 
           <section className="flex flex-col gap-4">
-            <SectionHeading title="เธเธฃเธฐเธกเธนเธฅเธเธณเธฅเธฑเธเธกเธฒเนเธฃเธ" hot />
+            <SectionHeading title="ประมูลกำลังมาแรง" hot />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
               {hotProducts.map((product) => (
                 <AuctionCard key={product.id} product={product} size="compact" onAction={handleProductAction} />
@@ -753,14 +753,14 @@ const RoleNotice = ({ viewer }: RoleNoticeProps) => {
     return (
       <div className="grid gap-3 rounded-lg border bg-card p-4 shadow-sm sm:grid-cols-[1fr_auto_auto] sm:items-center">
         <div>
-          <strong className="block">เน€เธฃเธดเนเธกเนเธเนเธเธฒเธ BidCard TH</strong>
-          <span className="text-sm text-muted-foreground">เธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธเน€เธเธทเนเธญเธเธทเนเธญ เน€เธ•เธดเธกเน€เธเธดเธ เนเธฅเธฐเน€เธชเธเธญเธฃเธฒเธเธฒ เธซเธฃเธทเธญเธชเธกเธฑเธเธฃเธฃเนเธฒเธเธเนเธฒเน€เธเธทเนเธญเน€เธฃเธดเนเธกเธฅเธเธเธฒเธขเธเธฒเธฃเนเธ”</span>
+          <strong className="block">เริ่มใช้งาน BidCard TH</strong>
+          <span className="text-sm text-muted-foreground">สมัครสมาชิกเพื่อซื้อ เติมเงิน และเสนอราคา หรือสมัครร้านค้าเพื่อเริ่มลงขายการ์ด</span>
         </div>
         <Button asChild variant="outline">
-          <Link href="/login">เน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธ</Link>
+          <Link href="/login">เข้าสู่ระบบ</Link>
         </Button>
         <Button asChild>
-          <Link href="/register">เธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธ</Link>
+          <Link href="/register">สมัครสมาชิก</Link>
         </Button>
       </div>
     );
@@ -769,9 +769,9 @@ const RoleNotice = ({ viewer }: RoleNoticeProps) => {
   if (viewer.role === "MEMBER") {
     return (
       <div className="flex flex-col gap-3 rounded-lg border border-wallet/20 bg-wallet/5 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
-        <span><strong>เธชเธกเธฒเธเธดเธเธ—เธฑเนเธงเนเธ:</strong> เธเธฃเนเธญเธกเธเธทเนเธญเนเธฅเธฐเธเธฃเธฐเธกเธนเธฅเนเธฅเนเธง เธซเธฒเธเธ•เนเธญเธเธเธฒเธฃเธฅเธเธเธฒเธขเนเธซเนเธชเธกเธฑเธเธฃเธฃเนเธฒเธเธเนเธฒเธเนเธญเธ</span>
+        <span><strong>สมาชิกทั่วไป:</strong> พร้อมซื้อและประมูลแล้ว หากต้องการลงขายให้สมัครร้านค้าก่อน</span>
         <Button asChild variant="outline">
-          <Link href="/seller/register">เธชเธกเธฑเธเธฃเธฃเนเธฒเธเธเนเธฒ</Link>
+          <Link href="/seller/register">สมัครร้านค้า</Link>
         </Button>
       </div>
     );
@@ -792,7 +792,7 @@ const RoleNotice = ({ viewer }: RoleNoticeProps) => {
     <div className="flex flex-col gap-3 rounded-lg border bg-card p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
       <span><strong>Admin:</strong> โหมดผู้ดูแลสำหรับทดสอบระบบ ใช้ซื้อ ประมูล เติมเงิน และลงสินค้าในร้าน Admin Dev Shop ได้</span>
       <Button asChild>
-        <Link href="/admin">เน€เธเธดเธ”เธซเธฅเธฑเธเธเนเธฒเธ</Link>
+        <Link href="/admin">เปิดหลังบ้าน</Link>
       </Button>
     </div>
   );
@@ -807,22 +807,22 @@ interface FilterSidebarProps {
 const FilterSidebar = ({ filters, onChange, onClear }: FilterSidebarProps) => (
   <aside className="rounded-lg border bg-card p-4 shadow-sm lg:sticky lg:top-24 lg:h-[calc(100vh-7rem)] lg:overflow-auto">
     <div className="mb-5 flex items-center justify-between">
-      <h2 className="text-lg font-semibold">เธ•เธฑเธงเธเธฃเธญเธ</h2>
+      <h2 className="text-lg font-semibold">ตัวกรอง</h2>
       <Button type="button" variant="link" className="h-auto p-0 text-primary" onClick={onClear}>
-        เธฅเนเธฒเธเธ—เธฑเนเธเธซเธกเธ”
+        ล้างทั้งหมด
       </Button>
     </div>
 
-    <FilterBlock title="เธเธฃเธฐเน€เธ เธ—เธชเธดเธเธเนเธฒ">
+    <FilterBlock title="ประเภทสินค้า">
       <RadioGroup
         value={filters.saleType}
         onValueChange={(value) => onChange({ ...filters, saleType: value as ListingMode | "all" })}
         className="flex flex-col gap-3"
       >
         {[
-          ["all", "เธ—เธฑเนเธเธซเธกเธ”"],
-          ["auction", "เธเธฃเธฐเธกเธนเธฅ"],
-          ["buy", "เธเธทเนเธญเน€เธฅเธข"],
+          ["all", "ทั้งหมด"],
+          ["auction", "ประมูล"],
+          ["buy", "ซื้อเลย"],
         ].map(([value, label]) => (
           <label key={value} className="flex items-center gap-2 text-sm">
             <RadioGroupItem value={value} />
@@ -847,14 +847,14 @@ const FilterSidebar = ({ filters, onChange, onClear }: FilterSidebarProps) => (
         ))}
       </RadioGroup>
       <Button type="button" variant="link" className="h-auto justify-start p-0 text-muted-foreground">
-        เน€เธเธดเนเธกเน€เธ•เธดเธก <ChevronDown data-icon="inline-end" />
+        เพิ่มเติม <ChevronDown data-icon="inline-end" />
       </Button>
     </FilterBlock>
 
     <FilterBlock title="NAME / CARD ID">
       <div className="relative">
         <Search className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="เธเนเธเธซเธฒเธเธตเธฃเธตเธชเน" className="pr-10" />
+        <Input placeholder="ค้นหาซีรีส์" className="pr-10" />
       </div>
       {["OP-01 ROMANCE DAWN", "OP-02 PARAMOUNT WAR", "OP-03 PILLARS OF STRENGTH", "OP-05 AWAKENING"].map((label, index) => (
         <label key={label} className="flex items-center gap-2 text-sm">
@@ -865,7 +865,7 @@ const FilterSidebar = ({ filters, onChange, onClear }: FilterSidebarProps) => (
       ))}
     </FilterBlock>
 
-    <FilterBlock title="เธฃเธฐเธ”เธฑเธเธเธงเธฒเธกเธซเธฒเธขเธฒเธ">
+    <FilterBlock title="ระดับความหายาก">
       <RadioGroup
         value={filters.rarity}
         onValueChange={(value) => onChange({ ...filters, rarity: value as ProductRarity | "all" })}
@@ -873,7 +873,7 @@ const FilterSidebar = ({ filters, onChange, onClear }: FilterSidebarProps) => (
       >
         <label className="flex items-center gap-2 text-sm">
           <RadioGroupItem value="all" />
-          เธ—เธฑเนเธเธซเธกเธ”
+          ทั้งหมด
         </label>
         {rarityOptions.map((rarity) => (
           <label key={rarity} className="flex items-center gap-2 text-sm">
@@ -885,19 +885,19 @@ const FilterSidebar = ({ filters, onChange, onClear }: FilterSidebarProps) => (
       </RadioGroup>
     </FilterBlock>
 
-    <FilterBlock title="เธเนเธงเธเธฃเธฒเธเธฒ (เธฟ)">
+    <FilterBlock title="ช่วงราคา (฿)">
       <div className="grid grid-cols-2 gap-2">
         <Input
           type="number"
           min={0}
-          placeholder="เธเธฑเนเธเธ•เนเธณ"
+          placeholder="ขั้นต่ำ"
           value={filters.minPrice}
           onChange={(event) => onChange({ ...filters, minPrice: event.target.value })}
         />
         <Input
           type="number"
           min={0}
-          placeholder="เธชเธนเธเธชเธธเธ”"
+          placeholder="สูงสุด"
           value={filters.maxPrice}
           onChange={(event) => onChange({ ...filters, maxPrice: event.target.value })}
         />
@@ -933,7 +933,7 @@ const MarketToolbar = ({ query, sortMode, onQueryChange, onSortChange }: MarketT
     <div className="relative md:w-[430px]">
       <Input
         value={query}
-        placeholder="เธเนเธเธซเธฒเธเธฒเธฃเนเธ”/เธเธตเธฃเธตเธชเน/เธเธทเนเธญเธเธฒเธฃเนเธ”..."
+        placeholder="ค้นหาการ์ด/ซีรีส์/ชื่อการ์ด..."
         className="h-11 bg-card pr-10"
         onChange={(event) => onQueryChange(event.target.value)}
       />
@@ -942,25 +942,25 @@ const MarketToolbar = ({ query, sortMode, onQueryChange, onSortChange }: MarketT
     <div className="flex items-center gap-2 overflow-x-auto">
       <Select value={sortMode} onValueChange={(value) => onSortChange(value as SortMode)}>
         <SelectTrigger className="h-11 w-[170px] bg-card">
-          <SelectValue placeholder="เน€เธฃเธตเธขเธ" />
+          <SelectValue placeholder="เรียง" />
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
-            <SelectItem value="ending">เน€เธฃเธตเธขเธ: เนเธเธฅเนเธเธเธเนเธญเธ</SelectItem>
-            <SelectItem value="priceHigh">เธฃเธฒเธเธฒเธชเธนเธเธเนเธญเธ</SelectItem>
-            <SelectItem value="priceLow">เธฃเธฒเธเธฒเธ•เนเธณเธเนเธญเธ</SelectItem>
+            <SelectItem value="ending">เรียง: ใกล้จบก่อน</SelectItem>
+            <SelectItem value="priceHigh">ราคาสูงก่อน</SelectItem>
+            <SelectItem value="priceLow">ราคาต่ำก่อน</SelectItem>
           </SelectGroup>
         </SelectContent>
       </Select>
-      <Button type="button" variant="secondary" size="icon" aria-label="เธกเธธเธกเธกเธญเธเธเธฃเธดเธ”">
+      <Button type="button" variant="secondary" size="icon" aria-label="มุมมองกริด">
         <Grid2X2 />
       </Button>
-      <Button type="button" variant="outline" size="icon" aria-label="เธกเธธเธกเธกเธญเธเธฃเธฒเธขเธเธฒเธฃ">
+      <Button type="button" variant="outline" size="icon" aria-label="มุมมองรายการ">
         <LayoutList />
       </Button>
       <Button type="button" variant="outline">
         <Filter data-icon="inline-start" />
-        เธ•เธฑเธงเธเธฃเธญเธ
+        ตัวกรอง
         <Badge variant="destructive">2</Badge>
       </Button>
     </div>
@@ -997,13 +997,13 @@ const AuctionCard = ({ product, size, onAction }: AuctionCardProps) => (
       />
       <div className="absolute left-3 top-3 flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs font-semibold text-primary-foreground">
         <Clock3 data-icon="inline-start" />
-        {product.mode === "auction" ? product.endsIn : "เธเธทเนเธญเน€เธฅเธข เธเธฃเนเธญเธกเธชเนเธ"}
+        {product.mode === "auction" ? product.endsIn : "ซื้อเลย พร้อมส่ง"}
       </div>
-      <Button type="button" variant="secondary" size="icon-sm" className="absolute right-3 top-3 rounded-full bg-card/90" aria-label="เธ•เธดเธ”เธ•เธฒเธก">
+      <Button type="button" variant="secondary" size="icon-sm" className="absolute right-3 top-3 rounded-full bg-card/90" aria-label="ติดตาม">
         <Heart />
       </Button>
       <div className="absolute bottom-3 left-3 flex items-center gap-2">
-        {(product.rarity === "SEC" || product.rarity === "SP" || product.rarity === "P") && <Badge className="bg-bid text-bid-foreground">เธเธธเธ”เธเธดเธขเธก</Badge>}
+        {(product.rarity === "SEC" || product.rarity === "SP" || product.rarity === "P") && <Badge className="bg-bid text-bid-foreground">จุดนิยม</Badge>}
         <Badge variant="secondary" className="bg-foreground/80 text-background">
           <Eye data-icon="inline-start" />
           {product.watchers}
@@ -1022,9 +1022,9 @@ const AuctionCard = ({ product, size, onAction }: AuctionCardProps) => (
     <CardContent className={cn("grid gap-2", size === "compact" ? "px-3 pb-3" : "px-4 pb-4")}>
       {size === "feature" ? (
         <div className="grid grid-cols-2 gap-3 border-t pt-3 text-sm">
-          <PriceMetric label="เธฃเธฒเธเธฒเน€เธเธดเธ”" value={formatMoney(product.openingPrice, true)} />
-          <PriceMetric label="เธฃเธฒเธเธฒเธเธฑเธเธเธธเธเธฑเธ" value={formatMoney(product.currentPrice, true)} strong />
-          <PriceMetric label={product.mode === "auction" ? "เธเธนเนเน€เธชเธเธญเธชเธนเธเธชเธธเธ”" : "เธฃเนเธฒเธเธเนเธฒ"} value={product.mode === "auction" ? product.topBidder : product.seller} />
+          <PriceMetric label="ราคาเปิด" value={formatMoney(product.openingPrice, true)} />
+          <PriceMetric label="ราคาปัจจุบัน" value={formatMoney(product.currentPrice, true)} strong />
+          <PriceMetric label={product.mode === "auction" ? "ผู้เสนอสูงสุด" : "ร้านค้า"} value={product.mode === "auction" ? product.topBidder : product.seller} />
         </div>
       ) : (
         <div className="flex items-end justify-between gap-2">
@@ -1036,7 +1036,7 @@ const AuctionCard = ({ product, size, onAction }: AuctionCardProps) => (
     {size === "feature" && (
       <CardFooter className="px-4 pb-4">
         <Button type="button" className="w-full bg-bid text-white hover:bg-bid/90" onClick={() => onAction(product)}>
-          {product.mode === "auction" ? "เน€เธชเธเธญเธฃเธฒเธเธฒ" : "เธเธทเนเธญเน€เธฅเธข"}
+          {product.mode === "auction" ? "เสนอราคา" : "ซื้อเลย"}
         </Button>
       </CardFooter>
     )}
@@ -1288,7 +1288,7 @@ const ListingSheet = ({ open, mode, onModeChange, onOpenChange, onSubmit }: List
       </SheetHeader>
       <form action={onSubmit} className="flex flex-col gap-5 p-5">
         <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
-          {["เธเนเธญเธกเธนเธฅเธชเธดเธเธเนเธฒ", "เธฃเธฒเธขเธฅเธฐเน€เธญเธตเธขเธ”", "เธ•เธฃเธงเธเธชเธญเธ"].map((label, index) => (
+          {["ข้อมูลสินค้า", "รายละเอียด", "ตรวจสอบ"].map((label, index) => (
             <div key={label} className={cn("flex items-center gap-2", index === 0 && "text-primary")}>
               <span className={cn("flex size-6 items-center justify-center rounded-full bg-muted", index === 0 && "bg-primary text-primary-foreground")}>{index + 1}</span>
               <strong>{label}</strong>
@@ -1299,8 +1299,8 @@ const ListingSheet = ({ open, mode, onModeChange, onOpenChange, onSubmit }: List
         <div className="grid gap-5 lg:grid-cols-[1fr_220px]">
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-2 gap-3">
-              <ModeButton active={mode === "auction"} title="เธเธฃเธฐเธกเธนเธฅ" detail="เธเธนเนเธชเธเนเธเน€เธชเธเธญเธฃเธฒเธเธฒ" onClick={() => onModeChange("auction")} />
-              <ModeButton active={mode === "buy"} title="เธเธทเนเธญเน€เธฅเธข" detail="เธฃเธฒเธเธฒเธเธเธ—เธตเนเธ—เธฑเธเธ—เธต" onClick={() => onModeChange("buy")} />
+              <ModeButton active={mode === "auction"} title="ประมูล" detail="ผู้สนใจเสนอราคา" onClick={() => onModeChange("auction")} />
+              <ModeButton active={mode === "buy"} title="ซื้อเลย" detail="ราคาคงที่ทันที" onClick={() => onModeChange("buy")} />
             </div>
 
             <input type="hidden" name="game" value={CARD_GAME_NAME} />
@@ -1337,15 +1337,15 @@ const ListingSheet = ({ open, mode, onModeChange, onOpenChange, onSubmit }: List
             <div className="grid gap-3 sm:grid-cols-3">
               <Input name="openingPrice" required type="number" min={100} defaultValue={1000} placeholder="ราคาเปิดประมูล" />
               <Input name="buyNowPrice" required type="number" min={0} defaultValue={12750} placeholder="ราคาซื้อเลย" />
-              <Select name="duration" defaultValue="3 เธงเธฑเธ">
+              <Select name="duration" defaultValue="3 วัน">
                 <SelectTrigger>
-                  <SelectValue placeholder="เธฃเธฐเธขเธฐเน€เธงเธฅเธฒ" />
+                  <SelectValue placeholder="ระยะเวลา" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectItem value="30 เธเธฒเธ—เธต">30 เธเธฒเธ—เธต</SelectItem>
-                    <SelectItem value="3 เธงเธฑเธ">3 เธงเธฑเธ</SelectItem>
-                    <SelectItem value="7 เธงเธฑเธ">7 เธงเธฑเธ</SelectItem>
+                    <SelectItem value="30 นาที">30 นาที</SelectItem>
+                    <SelectItem value="3 วัน">3 วัน</SelectItem>
+                    <SelectItem value="7 วัน">7 วัน</SelectItem>
                   </SelectGroup>
                 </SelectContent>
               </Select>
@@ -1361,8 +1361,8 @@ const ListingSheet = ({ open, mode, onModeChange, onOpenChange, onSubmit }: List
           <div className="flex flex-col gap-3">
             <div className="flex min-h-40 flex-col items-center justify-center gap-2 rounded-lg border border-dashed bg-muted/40 p-4 text-center text-sm text-muted-foreground">
               <ImageUp />
-              <strong className="text-foreground">เธเธฅเธดเธเธซเธฃเธทเธญเธงเธฒเธเนเธเธฅเนเธ—เธตเนเธเธตเน</strong>
-              <span>เธฃเธญเธเธฃเธฑเธ JPG, PNG เธชเธนเธเธชเธธเธ” 10MB</span>
+              <strong className="text-foreground">คลิกหรือวางไฟล์ที่นี่</strong>
+              <span>รองรับ JPG, PNG สูงสุด 10MB</span>
             </div>
             <div className="grid grid-cols-4 gap-2">
               {["object-pos-1", "object-pos-2", "object-pos-3"].map((position) => (
@@ -1370,21 +1370,21 @@ const ListingSheet = ({ open, mode, onModeChange, onOpenChange, onSubmit }: List
                   key={position}
                   className={cn("product-art aspect-square overflow-hidden rounded-md bg-muted", position)}
                   role="img"
-                  aria-label="เธ•เธฑเธงเธญเธขเนเธฒเธเธฃเธนเธเธเธฒเธฃเนเธ”"
+                  aria-label="ตัวอย่างรูปการ์ด"
                 />
               ))}
               <div className="flex aspect-square items-center justify-center rounded-md bg-foreground text-background">+2</div>
             </div>
-            <Input placeholder="เธงเธฒเธเธฅเธดเธเธเน YouTube" aria-label="เธงเธดเธ”เธตเนเธญเธชเธดเธเธเนเธฒ" />
+            <Input placeholder="วางลิงก์ YouTube" aria-label="วิดีโอสินค้า" />
           </div>
         </div>
 
         <Separator />
         <SheetFooter className="p-0 sm:flex-row sm:justify-end">
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
-            เธขเธเน€เธฅเธดเธ
+            ยกเลิก
           </Button>
-          <Button type="submit">เธ–เธฑเธ”เนเธ</Button>
+          <Button type="submit">ถัดไป</Button>
         </SheetFooter>
       </form>
     </SheetContent>

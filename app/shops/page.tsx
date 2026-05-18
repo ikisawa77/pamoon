@@ -11,10 +11,10 @@ import { prisma } from "@/lib/db/prisma";
 export const dynamic = "force-dynamic";
 
 const statusLabel = {
-  APPROVED: "เน€เธเธดเธ”เธเธฒเธขเธญเธขเธนเน",
-  PENDING: "เธฃเธญเธ•เธฃเธงเธเธชเธญเธ",
-  REJECTED: "เนเธกเนเธญเธเธธเธกเธฑเธ•เธด",
-  SUSPENDED: "เธฃเธฐเธเธฑเธเธเธฑเนเธงเธเธฃเธฒเธง",
+  APPROVED: "เปิดขายอยู่",
+  PENDING: "รอตรวจสอบ",
+  REJECTED: "ไม่อนุมัติ",
+  SUSPENDED: "ระงับชั่วคราว",
 } as const;
 
 const ShopsPage = async () => {
@@ -48,15 +48,15 @@ const ShopsPage = async () => {
         <section className="neon-panel grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-end">
           <div>
             <Badge className="mb-4">Verified Resellers</Badge>
-            <h1 className="max-w-3xl text-4xl font-black leading-tight sm:text-6xl">เธฃเนเธฒเธเธเธฒเธฃเนเธ”เธ—เธตเนเธเนเธฒเธเธเธฒเธฃเธ•เธฃเธงเธเธชเธญเธ</h1>
+            <h1 className="max-w-3xl text-4xl font-black leading-tight sm:text-6xl">ร้านการ์ดที่ผ่านการตรวจสอบ</h1>
             <p className="mt-4 max-w-2xl text-muted-foreground">
-              เน€เธฅเธทเธญเธเธฃเนเธฒเธเธเนเธฒ เธ”เธนเธเธฐเนเธเธ เธฃเธตเธงเธดเธง เธเธณเธเธงเธเธชเธดเธเธเนเธฒ เนเธฅเธฐเธฃเธฒเธขเธเธฒเธฃเธฅเนเธฒเธชเธธเธ”เธเนเธญเธเธเธทเนเธญเธซเธฃเธทเธญเน€เธเนเธฒเธฃเนเธงเธกเธเธฃเธฐเธกเธนเธฅ
+              เลือกร้านค้า ดูคะแนน รีวิว จำนวนสินค้า และรายการล่าสุดก่อนซื้อหรือเข้าร่วมประมูล
             </p>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <Metric icon={Store} label="เธฃเนเธฒเธเธเนเธฒ" value={shops.length.toLocaleString("th-TH")} />
-            <Metric icon={Package} label="เธชเธดเธเธเนเธฒ" value={shops.reduce((sum, shop) => sum + shop._count.products, 0).toLocaleString("th-TH")} />
-            <Metric icon={Trophy} label="เธเธณเธชเธฑเนเธเธเธทเนเธญ" value={shops.reduce((sum, shop) => sum + shop._count.orders, 0).toLocaleString("th-TH")} />
+            <Metric icon={Store} label="ร้านค้า" value={shops.length.toLocaleString("th-TH")} />
+            <Metric icon={Package} label="สินค้า" value={shops.reduce((sum, shop) => sum + shop._count.products, 0).toLocaleString("th-TH")} />
+            <Metric icon={Trophy} label="คำสั่งซื้อ" value={shops.reduce((sum, shop) => sum + shop._count.orders, 0).toLocaleString("th-TH")} />
           </div>
         </section>
 
@@ -69,23 +69,23 @@ const ShopsPage = async () => {
                     <div className="min-w-0">
                       <Badge>{statusLabel[shop.status]}</Badge>
                       <h2 className="mt-3 truncate text-2xl font-bold">{shop.name}</h2>
-                      <p className="text-sm text-muted-foreground">เธ”เธนเนเธฅเนเธ”เธข {shop.owner.displayName}</p>
+                      <p className="text-sm text-muted-foreground">ดูแลโดย {shop.owner.displayName}</p>
                     </div>
                     <div className="text-right">
                       <span className="inline-flex items-center gap-1 font-semibold text-primary">
                         <Star className="size-4 fill-current" />
                         {shop.rating.toFixed(1)}
                       </span>
-                      <p className="text-xs text-muted-foreground">{shop.reviewCount.toLocaleString("th-TH")} เธฃเธตเธงเธดเธง</p>
+                      <p className="text-xs text-muted-foreground">{shop.reviewCount.toLocaleString("th-TH")} รีวิว</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-sm">
-                    <span className="rounded-xl bg-white/5 p-3"><strong className="block text-lg">{shop._count.products}</strong>เธชเธดเธเธเนเธฒ</span>
-                    <span className="rounded-xl bg-white/5 p-3"><strong className="block text-lg">{shop._count.orders}</strong>เธเธณเธชเธฑเนเธเธเธทเนเธญ</span>
-                    <span className="rounded-xl bg-white/5 p-3"><strong className="block truncate text-lg">{shop.slug}</strong>เธฃเธซเธฑเธชเธฃเนเธฒเธ</span>
+                    <span className="rounded-xl bg-white/5 p-3"><strong className="block text-lg">{shop._count.products}</strong>สินค้า</span>
+                    <span className="rounded-xl bg-white/5 p-3"><strong className="block text-lg">{shop._count.orders}</strong>คำสั่งซื้อ</span>
+                    <span className="rounded-xl bg-white/5 p-3"><strong className="block truncate text-lg">{shop.slug}</strong>รหัสร้าน</span>
                   </div>
                   <Button asChild className="mt-5">
-                    <Link href={`/shops/${shop.slug}`}>เน€เธเธดเธ”เธซเธเนเธฒเธฃเนเธฒเธ</Link>
+                    <Link href={`/shops/${shop.slug}`}>เปิดหน้าร้าน</Link>
                   </Button>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -103,7 +103,7 @@ const ShopsPage = async () => {
                       </Link>
                     ))
                   ) : (
-                    <div className="col-span-2 flex min-h-52 items-center justify-center rounded-xl bg-white/5 text-sm text-muted-foreground">เธขเธฑเธเนเธกเนเธกเธตเธชเธดเธเธเนเธฒเธ—เธตเนเน€เธเธดเธ”เธเธฒเธข</div>
+                    <div className="col-span-2 flex min-h-52 items-center justify-center rounded-xl bg-white/5 text-sm text-muted-foreground">ยังไม่มีสินค้าที่เปิดขาย</div>
                   )}
                 </div>
               </div>
