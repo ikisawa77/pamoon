@@ -3,6 +3,7 @@ import mariadb from "mariadb";
 
 const databaseUrl = process.env.DATABASE_URL ?? "mysql://root@127.0.0.1:3306/pamoon";
 const sourceUrl = process.env.DATA_CARDGAME_SOURCE_URL ?? "https://data-cardgame.com/prices_full.json";
+const sourceName = "data-cardgame";
 const cardGameName = "One Piece Card Game (Japanese)";
 
 const parseMariaDbUrl = (url) => {
@@ -24,12 +25,7 @@ const makeSet = (prefix, index, name) => {
   const setCode = `${prefix.toUpperCase()}-${number}`;
   const setName = name ?? `${prefix.toUpperCase()}-${number}`;
 
-  return {
-    category,
-    setCode,
-    setName,
-    label: `[${setCode}] ${setName}`,
-  };
+  return { category, setCode, setName, label: `[${setCode}] ${setName}` };
 };
 
 const supportedSets = [
@@ -56,6 +52,7 @@ const supportedSets = [
   { category: "PRB02", setCode: "PRB-02", setName: "Premium Booster 02", label: "[PRB-02] Premium Booster 02" },
   ...Array.from({ length: 30 }, (_, index) => makeSet("st", index + 1, `Starter Deck ${String(index + 1).padStart(2, "0")}`)),
 ];
+const supportedSetByCategory = new Map(supportedSets.map((set) => [set.category, set]));
 
 const normalizeCardCode = (sourceKey) => sourceKey.toUpperCase().split("_")[0].trim();
 
@@ -110,80 +107,87 @@ const ensureSupportedSets = async (connection) => {
         \`isActive\` = 1,
         \`sortOrder\` = VALUES(\`sortOrder\`),
         \`updatedAt\` = NOW()`,
-      [
-        `card_set_${set.category.toLowerCase()}`,
-        resolvedGameId,
-        set.category,
-        set.setCode,
-        set.setName,
-        set.label,
-        index + 1,
-      ],
+      [`card_set_${set.category.toLowerCase()}`, resolvedGameId, set.category, set.setCode, set.setName, set.label, index + 1],
     );
   }
 };
 
 const main = async () => {
   const connection = await mariadb.createConnection(parseMariaDbUrl(databaseUrl));
+  let runId = null;
 
   try {
     const payload = await fetchPayload();
     await ensureSupportedSets(connection);
-    await connection.query(
-      "UPDATE `CardMaster` SET `createdAt` = NOW() WHERE `createdAt` = '0000-00-00 00:00:00'",
+    const runResult = await connection.query(
+      "INSERT INTO `CardImportRun` (`id`, `source`, `status`, `message`, `startedAt`) VALUES (?, ?, 'RUNNING', ?, NOW())",
+      [`card_import_${Date.now()}`, sourceName, sourceUrl],
     );
-    await connection.query(
-      "UPDATE `CardMaster` SET `updatedAt` = NOW() WHERE `updatedAt` = '0000-00-00 00:00:00'",
-    );
+    runId = runResult.insertId ? String(runResult.insertId) : `card_import_${Date.now()}`;
+    const [run] = await connection.query("SELECT `id` FROM `CardImportRun` WHERE `source` = ? ORDER BY `startedAt` DESC LIMIT 1", [sourceName]);
+    runId = run?.id ?? runId;
+
     const cardSets = await connection.query("SELECT `category`, `setCode`, `setName` FROM `CardSet` WHERE `isActive` = 1");
     const setByCategory = new Map(cardSets.map((set) => [String(set.category).toUpperCase(), set]));
     let imported = 0;
+    let supported = 0;
     let skipped = 0;
 
     for (const [rawCategory, cards] of Object.entries(payload)) {
+      const sourceCategory = rawCategory.toLowerCase();
       const category = rawCategory.toUpperCase();
+      const supportedSet = supportedSetByCategory.get(category);
       const cardSet = setByCategory.get(category);
+      const setCode = supportedSet?.setCode ?? category;
+      const setName = supportedSet?.setName ?? category;
+      const label = supportedSet?.label ?? `[${setCode}] ${setName}`;
+      const entries = Object.entries(cards ?? {});
 
-      if (!cardSet || typeof cards !== "object" || !cards) {
-        skipped += 1;
-        continue;
-      }
+      await connection.query(
+        `INSERT INTO \`ExternalCardSet\`
+          (\`id\`, \`source\`, \`sourceCategory\`, \`gameName\`, \`setCode\`, \`setName\`, \`label\`, \`isSupported\`, \`cardCount\`, \`createdAt\`, \`updatedAt\`)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+         ON DUPLICATE KEY UPDATE
+          \`gameName\` = VALUES(\`gameName\`),
+          \`setCode\` = VALUES(\`setCode\`),
+          \`setName\` = VALUES(\`setName\`),
+          \`label\` = VALUES(\`label\`),
+          \`isSupported\` = VALUES(\`isSupported\`),
+          \`cardCount\` = VALUES(\`cardCount\`),
+          \`updatedAt\` = NOW()`,
+        [`external_set_${sourceCategory}`, sourceName, sourceCategory, cardGameName, setCode, setName, label, Boolean(cardSet), entries.length],
+      );
+      const [externalSet] = await connection.query("SELECT `id` FROM `ExternalCardSet` WHERE `source` = ? AND `sourceCategory` = ? LIMIT 1", [
+        sourceName,
+        sourceCategory,
+      ]);
 
-      for (const [sourceKey, card] of Object.entries(cards)) {
+      for (const [sourceKey, card] of entries) {
         if (!card || typeof card !== "object") {
+          skipped += 1;
           continue;
         }
 
         const title = String(card.name ?? normalizeCardCode(sourceKey));
         const sourceRarity = String(card.rarity ?? "");
-        const row = {
-          id: `dcg_${category.toLowerCase()}_${sourceKey.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`.slice(0, 191),
-          source: "data-cardgame",
-          sourceKey: String(sourceKey).toUpperCase(),
-          cardCode: normalizeCardCode(sourceKey),
-          title,
-          rarity: normalizeRarity(sourceRarity, title),
-          sourceRarity,
-          category,
-          setCode: String(cardSet.setCode),
-          setName: String(cardSet.setName),
-          imageUrl: typeof card.image_url === "string" ? card.image_url : null,
-          priceThb: Number.isFinite(Number(card.thb)) ? Number(card.thb) : null,
-          priceJpy: Number.isFinite(Number(card.jpy)) ? Number(card.jpy) : null,
-          inStock: Boolean(card.stock),
-          raw: JSON.stringify(card),
-        };
+        const rarity = normalizeRarity(sourceRarity, title);
+        const normalizedSourceKey = String(sourceKey).toUpperCase();
+        const cardCode = normalizeCardCode(sourceKey);
+        const imageUrl = typeof card.image_url === "string" ? card.image_url : null;
+        const priceThb = Number.isFinite(Number(card.thb)) ? Number(card.thb) : null;
+        const priceJpy = Number.isFinite(Number(card.jpy)) ? Number(card.jpy) : null;
+        const raw = JSON.stringify(card);
 
         await connection.query(
-          `INSERT INTO \`CardMaster\`
-            (\`id\`, \`source\`, \`sourceKey\`, \`cardCode\`, \`title\`, \`rarity\`, \`sourceRarity\`, \`category\`, \`setCode\`, \`setName\`, \`imageUrl\`, \`priceThb\`, \`priceJpy\`, \`inStock\`, \`raw\`, \`createdAt\`, \`updatedAt\`)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
-          ON DUPLICATE KEY UPDATE
+          `INSERT INTO \`ExternalCardMaster\`
+            (\`id\`, \`externalSetId\`, \`source\`, \`sourceCategory\`, \`sourceKey\`, \`cardCode\`, \`title\`, \`rarity\`, \`gameName\`, \`setCode\`, \`setName\`, \`imageUrl\`, \`priceThb\`, \`priceJpy\`, \`inStock\`, \`raw\`, \`createdAt\`, \`updatedAt\`)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+           ON DUPLICATE KEY UPDATE
+            \`externalSetId\` = VALUES(\`externalSetId\`),
             \`cardCode\` = VALUES(\`cardCode\`),
             \`title\` = VALUES(\`title\`),
             \`rarity\` = VALUES(\`rarity\`),
-            \`sourceRarity\` = VALUES(\`sourceRarity\`),
-            \`category\` = VALUES(\`category\`),
+            \`gameName\` = VALUES(\`gameName\`),
             \`setCode\` = VALUES(\`setCode\`),
             \`setName\` = VALUES(\`setName\`),
             \`imageUrl\` = VALUES(\`imageUrl\`),
@@ -193,28 +197,83 @@ const main = async () => {
             \`raw\` = VALUES(\`raw\`),
             \`updatedAt\` = NOW()`,
           [
-            row.id,
-            row.source,
-            row.sourceKey,
-            row.cardCode,
-            row.title,
-            row.rarity,
-            row.sourceRarity,
-            row.category,
-            row.setCode,
-            row.setName,
-            row.imageUrl,
-            row.priceThb,
-            row.priceJpy,
-            row.inStock,
-            row.raw,
+            `external_${sourceCategory}_${normalizedSourceKey.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`.slice(0, 191),
+            externalSet.id,
+            sourceName,
+            sourceCategory,
+            normalizedSourceKey,
+            cardCode,
+            title,
+            sourceRarity || rarity,
+            cardGameName,
+            setCode,
+            setName,
+            imageUrl,
+            priceThb,
+            priceJpy,
+            Boolean(card.stock),
+            raw,
           ],
         );
         imported += 1;
+
+        if (!cardSet) {
+          continue;
+        }
+
+        await connection.query(
+          `INSERT INTO \`CardMaster\`
+            (\`id\`, \`source\`, \`sourceKey\`, \`cardCode\`, \`title\`, \`rarity\`, \`sourceRarity\`, \`category\`, \`setCode\`, \`setName\`, \`imageUrl\`, \`priceThb\`, \`priceJpy\`, \`inStock\`, \`raw\`, \`createdAt\`, \`updatedAt\`)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+           ON DUPLICATE KEY UPDATE
+            \`cardCode\` = VALUES(\`cardCode\`),
+            \`title\` = VALUES(\`title\`),
+            \`rarity\` = VALUES(\`rarity\`),
+            \`sourceRarity\` = VALUES(\`sourceRarity\`),
+            \`setCode\` = VALUES(\`setCode\`),
+            \`setName\` = VALUES(\`setName\`),
+            \`imageUrl\` = VALUES(\`imageUrl\`),
+            \`priceThb\` = VALUES(\`priceThb\`),
+            \`priceJpy\` = VALUES(\`priceJpy\`),
+            \`inStock\` = VALUES(\`inStock\`),
+            \`raw\` = VALUES(\`raw\`),
+            \`updatedAt\` = NOW()`,
+          [
+            `dcg_${category.toLowerCase()}_${normalizedSourceKey.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`.slice(0, 191),
+            sourceName,
+            normalizedSourceKey,
+            cardCode,
+            title,
+            rarity,
+            sourceRarity,
+            category,
+            String(cardSet.setCode),
+            String(cardSet.setName),
+            imageUrl,
+            priceThb,
+            priceJpy,
+            Boolean(card.stock),
+            raw,
+          ],
+        );
+        supported += 1;
       }
     }
 
-    console.log(`นำเข้าข้อมูลการ์ดจาก data-cardgame.com แล้ว ${imported.toLocaleString("th-TH")} รายการ, ข้าม ${skipped.toLocaleString("th-TH")} ชุด`);
+    await connection.query(
+      "UPDATE `CardImportRun` SET `status` = 'COMPLETED', `imported` = ?, `supported` = ?, `skipped` = ?, `setCount` = ?, `message` = ?, `finishedAt` = NOW() WHERE `id` = ?",
+      [imported, supported, skipped, Object.keys(payload).length, `นำเข้า ${imported.toLocaleString("th-TH")} รายการ / รองรับ marketplace ${supported.toLocaleString("th-TH")} รายการ`, runId],
+    );
+
+    console.log(`นำเข้าข้อมูลการ์ดจาก data-cardgame.com แล้ว ${imported.toLocaleString("th-TH")} รายการ, รองรับ marketplace ${supported.toLocaleString("th-TH")} รายการ, ข้าม ${skipped.toLocaleString("th-TH")} รายการ`);
+  } catch (error) {
+    if (runId) {
+      await connection.query("UPDATE `CardImportRun` SET `status` = 'FAILED', `message` = ?, `finishedAt` = NOW() WHERE `id` = ?", [
+        error instanceof Error ? error.message : "sync คลังการ์ดไม่สำเร็จ",
+        runId,
+      ]);
+    }
+    throw error;
   } finally {
     await connection.end();
   }

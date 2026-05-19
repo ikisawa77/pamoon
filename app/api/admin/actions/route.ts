@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { apiError, unknownError, validationError } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { syncDataCardgameCatalog } from "@/lib/card-sync/data-cardgame-sync";
 import { productCategoryEnumValues } from "@/lib/card-catalog";
 import { prisma } from "@/lib/db/prisma";
 import { flushPendingEmailNotifications } from "@/lib/email/sender";
@@ -39,6 +40,9 @@ const actionSchema = z.discriminatedUnion("action", [
   }),
   z.object({
     action: z.literal("flush-email"),
+  }),
+  z.object({
+    action: z.literal("sync-card-catalog"),
   }),
   z.object({
     action: z.literal("create-card-set"),
@@ -258,6 +262,18 @@ export const POST = async (request: NextRequest) => {
     if (input.action === "flush-email") {
       const result = await flushPendingEmailNotifications();
       await audit(admin.id, "EMAIL_FLUSH", "System", "email", "ส่งอีเมลค้างส่งจากหลังบ้าน");
+      return NextResponse.json({ ok: true, result });
+    }
+
+    if (input.action === "sync-card-catalog") {
+      const result = await syncDataCardgameCatalog();
+      await audit(
+        admin.id,
+        "CARD_CATALOG_SYNC",
+        "System",
+        "card-catalog",
+        `sync คลังการ์ดจาก data-cardgame.com ${result.imported.toLocaleString("th-TH")} รายการ`,
+      );
       return NextResponse.json({ ok: true, result });
     }
 

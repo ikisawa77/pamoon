@@ -209,6 +209,7 @@ enum AuditActionType {
   SLA_RUN
   EMAIL_FLUSH
   CARD_SET_UPDATED
+  CARD_CATALOG_SYNC
   EMAIL_TEMPLATE_UPDATED
 }
 
@@ -389,6 +390,68 @@ model CardMaster {
   @@index([category, rarity])
   @@index([setCode])
   @@index([title])
+}
+
+model ExternalCardSet {
+  id             String               @id @default(cuid())
+  source         String               @default("data-cardgame") @db.VarChar(60)
+  sourceCategory String               @db.VarChar(80)
+  gameName       String               @db.VarChar(160)
+  setCode        String               @db.VarChar(80)
+  setName        String               @db.VarChar(160)
+  label          String               @db.VarChar(220)
+  isSupported    Boolean              @default(false)
+  cardCount      Int                  @default(0)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  cards          ExternalCardMaster[]
+
+  @@unique([source, sourceCategory])
+  @@index([gameName])
+  @@index([isSupported])
+}
+
+model ExternalCardMaster {
+  id             String          @id @default(cuid())
+  externalSetId  String
+  source         String          @default("data-cardgame") @db.VarChar(60)
+  sourceCategory String          @db.VarChar(80)
+  sourceKey      String          @db.VarChar(120)
+  cardCode       String          @db.VarChar(40)
+  title          String          @db.VarChar(160)
+  rarity         String          @db.VarChar(40)
+  gameName       String          @db.VarChar(160)
+  setCode        String          @db.VarChar(80)
+  setName        String          @db.VarChar(160)
+  imageUrl       String?         @db.VarChar(500)
+  priceThb       Float?
+  priceJpy       Float?
+  inStock        Boolean         @default(false)
+  raw            Json?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  externalSet    ExternalCardSet @relation(fields: [externalSetId], references: [id], onDelete: Cascade)
+
+  @@unique([source, sourceCategory, sourceKey])
+  @@index([cardCode])
+  @@index([title])
+  @@index([gameName, setCode])
+}
+
+model CardImportRun {
+  id           String    @id @default(cuid())
+  source       String    @default("data-cardgame") @db.VarChar(60)
+  status       String    @default("RUNNING") @db.VarChar(40)
+  imported     Int       @default(0)
+  supported    Int       @default(0)
+  skipped      Int       @default(0)
+  setCount     Int       @default(0)
+  message      String?   @db.VarChar(1000)
+  startedAt    DateTime  @default(now())
+  finishedAt   DateTime?
+
+  @@index([source, startedAt])
+  @@index([status])
 }
 
 model Bid {

@@ -36,6 +36,10 @@ const AdminPage = async () => {
     emailTemplates,
     moderationCases,
     auditLogs,
+    cardMasterCount,
+    externalCardCount,
+    externalSetCount,
+    cardImportRuns,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.shop.count(),
@@ -106,6 +110,13 @@ const AdminPage = async () => {
     prisma.adminAuditLog.findMany({
       orderBy: [{ createdAt: "desc" }],
       take: 60,
+    }),
+    prisma.cardMaster.count(),
+    prisma.externalCardMaster.count(),
+    prisma.externalCardSet.count(),
+    prisma.cardImportRun.findMany({
+      orderBy: [{ startedAt: "desc" }],
+      take: 5,
     }),
   ]);
 
@@ -270,6 +281,22 @@ const AdminPage = async () => {
             message: log.message,
             createdAt: log.createdAt.toISOString(),
           }))}
+          cardCatalogSummary={{
+            supportedCardCount: cardMasterCount,
+            externalCardCount,
+            externalSetCount,
+            latestRuns: cardImportRuns.map((run) => ({
+              id: run.id,
+              status: run.status,
+              imported: run.imported,
+              supported: run.supported,
+              skipped: run.skipped,
+              setCount: run.setCount,
+              message: run.message,
+              startedAt: run.startedAt.toISOString(),
+              finishedAt: run.finishedAt?.toISOString() ?? null,
+            })),
+          }}
         />
       </main>
       <AppFooter />

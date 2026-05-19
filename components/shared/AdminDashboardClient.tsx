@@ -183,6 +183,23 @@ interface AuditRow {
   createdAt: string;
 }
 
+interface CardCatalogSummary {
+  supportedCardCount: number;
+  externalCardCount: number;
+  externalSetCount: number;
+  latestRuns: Array<{
+    id: string;
+    status: string;
+    imported: number;
+    supported: number;
+    skipped: number;
+    setCount: number;
+    message: string | null;
+    startedAt: string;
+    finishedAt: string | null;
+  }>;
+}
+
 interface AdminDashboardClientProps {
   stats: AdminStat[];
   homeContents: HomeContentItem[];
@@ -196,6 +213,7 @@ interface AdminDashboardClientProps {
   emailTemplates: EmailTemplateRow[];
   moderationCases: ModerationRow[];
   auditLogs: AuditRow[];
+  cardCatalogSummary: CardCatalogSummary;
 }
 
 const tabs = [
@@ -239,6 +257,7 @@ const AdminDashboardClient = ({
   emailTemplates,
   moderationCases,
   auditLogs,
+  cardCatalogSummary,
 }: AdminDashboardClientProps) => {
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
   const [message, setMessage] = useState("");
@@ -269,6 +288,16 @@ const AdminDashboardClient = ({
         title: "ส่งอีเมลค้างส่ง",
         description: "ระบบจะลองส่ง Email outbox ที่ยังรอส่งตามค่า SMTP ปัจจุบัน",
         confirmLabel: "Flush email",
+        cancelLabel: "ยกเลิก",
+        tone: "default",
+      };
+    }
+
+    if (action === "sync-card-catalog") {
+      return {
+        title: "Sync คลังการ์ด",
+        description: "ระบบจะดึงข้อมูลล่าสุดจาก data-cardgame.com เข้าฐานข้อมูลของเราเอง และอัปเดตรายละเอียดที่ใช้ auto-fill ตอนลงขายหรือประมูล",
+        confirmLabel: "เริ่ม sync",
         cancelLabel: "ยกเลิก",
         tone: "default",
       };
@@ -553,6 +582,43 @@ const AdminDashboardClient = ({
 
         {activeTab === "catalog" ? (
           <div className="grid gap-6">
+            <Card>
+              <CardHeader className="gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <CardTitle>Sync คลังการ์ดจาก data-cardgame.com</CardTitle>
+                  <CardDescription>
+                    ดึงข้อมูลการ์ดจริงเข้าฐานข้อมูลของเราเอง เพื่อใช้ค้นรหัสการ์ดและเติมรายละเอียดตอนลงขาย/ประมูลอัตโนมัติ
+                  </CardDescription>
+                </div>
+                <Button onClick={() => void runAction({ action: "sync-card-catalog" }, "sync คลังการ์ดแล้ว")}>
+                  <Play data-icon="inline-start" />
+                  Sync ตอนนี้
+                </Button>
+              </CardHeader>
+              <CardContent className="grid gap-4">
+                <div className="grid gap-3 md:grid-cols-3">
+                  <AdminInfoTile label="การ์ดทั้งหมดในคลังกลาง" value={`${cardCatalogSummary.externalCardCount.toLocaleString("th-TH")} รายการ`} />
+                  <AdminInfoTile label="ชุดการ์ดจากแหล่งข้อมูล" value={`${cardCatalogSummary.externalSetCount.toLocaleString("th-TH")} ชุด`} />
+                  <AdminInfoTile label="การ์ดที่ใช้กับ marketplace ได้" value={`${cardCatalogSummary.supportedCardCount.toLocaleString("th-TH")} รายการ`} />
+                </div>
+                <div className="grid gap-2">
+                  <strong className="text-sm">ประวัติ sync ล่าสุด</strong>
+                  {cardCatalogSummary.latestRuns.map((run) => (
+                    <div key={run.id} className="flex flex-col gap-2 rounded-lg border bg-background p-3 text-sm md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <Badge variant={statusVariant(run.status)}>{run.status}</Badge>
+                        <span className="ml-2 text-muted-foreground">{formatDate(run.startedAt)}</span>
+                        <p className="mt-1 text-muted-foreground">{run.message ?? "ไม่มีข้อความเพิ่มเติม"}</p>
+                      </div>
+                      <span className="text-muted-foreground">
+                        {run.imported.toLocaleString("th-TH")} รายการ / {run.setCount.toLocaleString("th-TH")} ชุด
+                      </span>
+                    </div>
+                  ))}
+                  {cardCatalogSummary.latestRuns.length === 0 ? <EmptyState text="ยังไม่มีประวัติ sync คลังการ์ด" /> : null}
+                </div>
+              </CardContent>
+            </Card>
             <Card>
               <CardHeader>
                 <CardTitle>เพิ่มชุดการ์ด</CardTitle>
