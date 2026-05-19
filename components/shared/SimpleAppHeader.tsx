@@ -26,9 +26,7 @@ const publicNavItems = [
   { label: "ช่วยเหลือ", href: "/help", icon: CircleHelp },
 ];
 
-const privateNavItems = [
-  { label: "รายการโปรด", href: "/collection", icon: Heart },
-];
+const privateNavItems = [{ label: "รายการโปรด", href: "/collection", icon: Heart }];
 
 interface HeaderUser {
   displayName: string;
@@ -58,7 +56,7 @@ const SimpleAppHeader = ({ user }: SimpleAppHeaderProps) => {
       <div className="mx-auto grid max-w-7xl gap-3 md:grid-cols-[auto_1fr_auto] md:items-center">
         <Link href="/" className="flex items-center gap-2">
           <div className="flex size-10 rotate-[-8deg] items-center justify-center rounded-md bg-primary text-lg font-bold text-primary-foreground shadow-lg shadow-primary/25">
-            ★
+            *
           </div>
           <div className="text-2xl font-bold tracking-tight">
             <span>BidCard</span> <span className="text-primary">TH</span>
@@ -134,7 +132,7 @@ const SimpleAppHeader = ({ user }: SimpleAppHeaderProps) => {
               </Link>
             </div>
           )}
-          <CartNavButton />
+          <CartNavButton active={isActivePath(pathname, "/cart")} />
         </div>
       </div>
     </header>

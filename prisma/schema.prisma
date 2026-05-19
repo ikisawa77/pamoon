@@ -365,6 +365,32 @@ model CardSet {
   @@index([isActive])
 }
 
+model CardMaster {
+  id           String          @id @default(cuid())
+  source       String          @default("data-cardgame") @db.VarChar(60)
+  sourceKey    String          @db.VarChar(120)
+  cardCode     String          @db.VarChar(40)
+  title        String          @db.VarChar(160)
+  rarity       ProductRarity
+  sourceRarity String          @db.VarChar(40)
+  category     ProductCategory
+  setCode      String          @db.VarChar(40)
+  setName      String          @db.VarChar(120)
+  imageUrl     String?         @db.VarChar(500)
+  priceThb     Float?
+  priceJpy     Float?
+  inStock      Boolean         @default(false)
+  raw          Json?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@unique([source, sourceKey])
+  @@index([cardCode])
+  @@index([category, rarity])
+  @@index([setCode])
+  @@index([title])
+}
+
 model Bid {
   id          String    @id @default(cuid())
   productId   String

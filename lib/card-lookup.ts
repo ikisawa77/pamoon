@@ -1,5 +1,6 @@
 import "server-only";
 import { cardSetDefinitions, getCardSetDefinition, getProductCategoryFromCardCode } from "@/lib/card-catalog";
+import { prisma } from "@/lib/db/prisma";
 import type { ProductCategory, ProductRarity } from "@/types/marketplace";
 
 interface DataCardEntry {
@@ -51,10 +52,7 @@ const normalizeRarity = (rarity: string | undefined, name: string | undefined): 
   const value = (rarity ?? "").toUpperCase();
   const title = (name ?? "").toLowerCase();
 
-  if (value.startsWith("P") || title.includes("parallel")) {
-    return "P";
-  }
-
+  if (value.startsWith("P") || title.includes("parallel")) return "P";
   if (value.includes("SEC")) return "SEC";
   if (value.includes("SP")) return "SP";
   if (value.includes("SR")) return "SR";
@@ -77,13 +75,36 @@ const findBestCard = (cards: DataCardSet, baseCode: string) => {
   return entries.find(([key]) => key.toUpperCase().startsWith(`${baseCode}_`)) ?? null;
 };
 
-export const lookupCardByCode = async (cardCode: string, preferredCategory?: ProductCategory): Promise<CardLookupResult | null> => {
-  const normalizedCode = normalizeCardCode(cardCode);
+const fromDb = async (normalizedCode: string, preferredCategory?: ProductCategory): Promise<CardLookupResult | null> => {
+  const card = await prisma.cardMaster.findFirst({
+    where: {
+      OR: [{ cardCode: normalizedCode }, { sourceKey: { startsWith: normalizedCode } }],
+      ...(preferredCategory ? { category: preferredCategory.toUpperCase() as never } : {}),
+    },
+    orderBy: [{ sourceKey: "asc" }],
+  });
 
-  if (!/^(?:OP|EB|ST)\d{2}-\d{3}$|^PRB\d{2}-\d{3}$/.test(normalizedCode)) {
+  if (!card) {
     return null;
   }
 
+  const set = getCardSetDefinition(card.category.toLowerCase() as ProductCategory);
+
+  return {
+    cardCode: card.cardCode,
+    title: card.title,
+    rarity: card.rarity as ProductRarity,
+    sourceRarity: card.sourceRarity,
+    category: card.category.toLowerCase() as ProductCategory,
+    setCode: card.setCode,
+    setName: card.setName,
+    setLabel: set.label,
+    imageUrl: card.imageUrl,
+    priceThb: card.priceThb,
+  };
+};
+
+const fromRemote = async (normalizedCode: string, preferredCategory?: ProductCategory): Promise<CardLookupResult | null> => {
   const payload = await fetchPayload();
   const detectedCategory = getProductCategoryFromCardCode(normalizedCode);
   const categoriesToTry = [
@@ -124,4 +145,14 @@ export const lookupCardByCode = async (cardCode: string, preferredCategory?: Pro
   }
 
   return null;
+};
+
+export const lookupCardByCode = async (cardCode: string, preferredCategory?: ProductCategory): Promise<CardLookupResult | null> => {
+  const normalizedCode = normalizeCardCode(cardCode);
+
+  if (!/^(?:OP|EB|ST)\d{2}-\d{3}$|^PRB\d{2}-\d{3}$/.test(normalizedCode)) {
+    return null;
+  }
+
+  return (await fromDb(normalizedCode, preferredCategory)) ?? fromRemote(normalizedCode, preferredCategory);
 };
