@@ -384,7 +384,7 @@ model CardMaster {
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
-  @@unique([source, sourceKey])
+  @@unique([source, category, sourceKey])
   @@index([cardCode])
   @@index([category, rarity])
   @@index([setCode])

@@ -76,10 +76,17 @@ const findBestCard = (cards: DataCardSet, baseCode: string) => {
 };
 
 const fromDb = async (normalizedCode: string, preferredCategory?: ProductCategory): Promise<CardLookupResult | null> => {
+  const detectedCategory = getProductCategoryFromCardCode(normalizedCode);
+  const primaryCategory = preferredCategory ?? detectedCategory ?? undefined;
   const card = await prisma.cardMaster.findFirst({
     where: {
       OR: [{ cardCode: normalizedCode }, { sourceKey: { startsWith: normalizedCode } }],
-      ...(preferredCategory ? { category: preferredCategory.toUpperCase() as never } : {}),
+      ...(primaryCategory ? { category: primaryCategory.toUpperCase() as never } : {}),
+    },
+    orderBy: [{ sourceKey: "asc" }],
+  }) ?? await prisma.cardMaster.findFirst({
+    where: {
+      OR: [{ cardCode: normalizedCode }, { sourceKey: { startsWith: normalizedCode } }],
     },
     orderBy: [{ sourceKey: "asc" }],
   });

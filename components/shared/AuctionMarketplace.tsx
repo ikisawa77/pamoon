@@ -124,6 +124,31 @@ interface CreateProductResponse {
   ok: boolean;
   product?: {
     id: string;
+    title?: string;
+    cardCode?: string;
+    setCode?: string;
+    setName?: string;
+    category?: Uppercase<ProductCategory>;
+    rarity?: ProductRarity;
+    imageUrl?: string | null;
+  };
+  error?: {
+    message: string;
+  };
+}
+
+interface CardLookupResponse {
+  ok: boolean;
+  card?: {
+    cardCode: string;
+    title: string;
+    rarity: ProductRarity;
+    category: ProductCategory;
+    setCode: string;
+    setName: string;
+    setLabel: string;
+    imageUrl: string | null;
+    priceThb: number | null;
   };
   error?: {
     message: string;
@@ -461,8 +486,10 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
       code: formData.get("code"),
       rarity: formData.get("rarity"),
       openingPrice: formData.get("openingPrice"),
+      bidIncrement: formData.get("bidIncrement"),
       buyNowPrice: formData.get("buyNowPrice"),
       duration: formData.get("duration"),
+      auctionEndsAt: formData.get("auctionEndsAt"),
       condition: formData.get("condition"),
       description: formData.get("description"),
     });
@@ -473,9 +500,11 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
     }
 
     const listing = parsed.data;
+    const imageUrl = String(formData.get("imageUrl") ?? "").trim();
     const cardSet = getCardSetDefinition(listing.category);
     const price = listing.mode === "auction" ? listing.openingPrice : listing.buyNowPrice;
     let createdProductId = `listing-${Date.now()}`;
+    let createdProduct: CreateProductResponse["product"] | undefined;
 
     if (initialData.primaryShopId) {
       try {
@@ -486,6 +515,7 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
           },
           body: JSON.stringify({
             ...listing,
+            imageUrl: imageUrl || undefined,
           }),
         });
         const result = (await response.json()) as CreateProductResponse;
@@ -496,6 +526,7 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
         }
 
         createdProductId = result.product.id;
+        createdProduct = result.product;
       } catch {
         setNotice("เชื่อมต่อ API ลงสินค้าไม่ได้");
         return;
@@ -504,28 +535,28 @@ const AuctionMarketplace = ({ initialData, initialSaleType = "all" }: AuctionMar
 
     const newProduct: AuctionProduct = {
       id: createdProductId,
-      title: listing.title,
-      code: `${listing.code} · ${cardSet.label}`,
+      title: createdProduct?.title ?? listing.title,
+      code: `${createdProduct?.cardCode ?? listing.code} · ${createdProduct?.setCode ?? cardSet.setCode} ${createdProduct?.setName ?? cardSet.setName}`,
       seller: isAdmin ? "Admin Dev Shop" : "CardHunter Shop",
       shopId: isAdmin ? "admin-dev-shop" : "cardhunter",
       topBidder: "รอผู้เสนอราคา",
       mode: listing.mode,
-      category: listing.category,
-      rarity: listing.rarity,
+      category: (createdProduct?.category?.toLowerCase() as ProductCategory | undefined) ?? listing.category,
+      rarity: createdProduct?.rarity ?? listing.rarity,
       openingPrice: listing.openingPrice,
       currentPrice: price,
       nextBid: price + 250,
       watchers: 0,
       endsIn: listing.mode === "auction" ? "เหลือ 2 ปี (หมด 28 เม.ย. 2028)" : "พร้อมส่ง",
       auctionEndsAt: listing.mode === "auction" ? "2028-04-28T17:00:00.000Z" : null,
-      imageUrl: null,
+      imageUrl: createdProduct?.imageUrl ?? (imageUrl || null),
       imagePositionClass: "object-pos-1",
       hot: false,
     };
 
     setProducts((current) => [newProduct, ...current]);
-    addActivity("ลงสินค้า", `${listing.title} (${listing.mode === "auction" ? "ประมูล" : "ซื้อเลย"})`);
-    setNotice(`ลงสินค้าแล้ว: ${listing.title} พร้อมแสดงในตลาด`);
+    addActivity("ลงสินค้า", `${newProduct.title} (${listing.mode === "auction" ? "ประมูล" : "ซื้อเลย"})`);
+    setNotice(`ลงสินค้าแล้ว: ${newProduct.title} พร้อมแสดงในตลาด`);
     setListingOpen(false);
   };
 
@@ -1279,117 +1310,197 @@ interface ListingSheetProps {
   onSubmit: (formData: FormData) => void | Promise<void>;
 }
 
-const ListingSheet = ({ open, mode, onModeChange, onOpenChange, onSubmit }: ListingSheetProps) => (
-  <Sheet open={open} onOpenChange={onOpenChange}>
-    <SheetContent className="w-full overflow-auto rounded-l-3xl p-0 sm:max-w-[560px] lg:max-w-[680px]">
-      <SheetHeader className="border-b bg-muted/40 px-6 py-5">
-        <SheetTitle className="text-2xl">ลงสินค้า</SheetTitle>
-        <SheetDescription>สร้างรายการขายหรือประมูลแบบเป็นขั้นตอน ตรวจข้อมูลก่อนเผยแพร่</SheetDescription>
-      </SheetHeader>
-      <form action={onSubmit} className="flex flex-col gap-5 p-5">
-        <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
-          {["ข้อมูลสินค้า", "รายละเอียด", "ตรวจสอบ"].map((label, index) => (
-            <div key={label} className={cn("flex items-center gap-2", index === 0 && "text-primary")}>
-              <span className={cn("flex size-6 items-center justify-center rounded-full bg-muted", index === 0 && "bg-primary text-primary-foreground")}>{index + 1}</span>
-              <strong>{label}</strong>
-            </div>
-          ))}
-        </div>
+const normalizeLookupCode = (value: string) => value.trim().toUpperCase().replace(/\s+/g, "");
+const cardCodePattern = "^(?:OP|EB|ST)[0-9]{2}-[0-9]{3}$|^PRB[0-9]{2}-[0-9]{3}$";
 
-        <div className="grid gap-5 lg:grid-cols-[1fr_220px]">
-          <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-3">
-              <ModeButton active={mode === "auction"} title="ประมูล" detail="ผู้สนใจเสนอราคา" onClick={() => onModeChange("auction")} />
-              <ModeButton active={mode === "buy"} title="ซื้อเลย" detail="ราคาคงที่ทันที" onClick={() => onModeChange("buy")} />
-            </div>
+const getDefaultAuctionEnd = () => {
+  const date = new Date(Date.now() + 1000 * 60 * 60 * 24 * 3);
+  return date.toISOString().slice(0, 16);
+};
 
-            <input type="hidden" name="game" value={CARD_GAME_NAME} />
-            <Select name="category" defaultValue="op01" required>
-              <SelectTrigger>
-                <SelectValue placeholder="เลือกชุดการ์ด" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {cardSetDefinitions.map((set) => (
-                    <SelectItem key={set.category} value={set.category}>{set.label}</SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+const ListingSheet = ({ open, mode, onModeChange, onOpenChange, onSubmit }: ListingSheetProps) => {
+  const [cardCode, setCardCode] = useState("OP01-121");
+  const [title, setTitle] = useState("Yamato");
+  const [category, setCategory] = useState<ProductCategory>("op01");
+  const [rarity, setRarity] = useState<ProductRarity>("SEC");
+  const [imageUrl, setImageUrl] = useState<string>("");
+  const [setLabel, setSetLabel] = useState("[OP-01] Romance Dawn");
+  const [lookupMessage, setLookupMessage] = useState("ใส่รหัสการ์ดแล้วกดค้นหา ระบบจะดึงชื่อ ชุด ระดับ และรูปจากคลังข้อมูลจริง");
+  const [lookupLoading, setLookupLoading] = useState(false);
 
-            <Input name="title" required defaultValue="Yamato (SEC)" placeholder="ชื่อการ์ด" />
-            <div className="grid gap-3 sm:grid-cols-3">
-              <Input name="code" required defaultValue="OP01-121" pattern="OP[0-9]{2}-[0-9]{3}" placeholder="รหัสการ์ด เช่น OP01-121" />
-              <Select name="rarity" defaultValue="SEC" required>
-                <SelectTrigger>
-                  <SelectValue placeholder="ระดับความหายาก" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {rarityOptions.map((rarity) => (
-                      <SelectItem key={rarity} value={rarity}>{rarity}</SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-              <Input name="condition" required defaultValue="Near Mint (NM)" placeholder="สภาพการ์ด" />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <Input name="openingPrice" required type="number" min={100} defaultValue={1000} placeholder="ราคาเปิดประมูล" />
-              <Input name="buyNowPrice" required type="number" min={0} defaultValue={12750} placeholder="ราคาซื้อเลย" />
-              <Select name="duration" defaultValue="3 วัน">
-                <SelectTrigger>
-                  <SelectValue placeholder="ระยะเวลา" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value="30 นาที">30 นาที</SelectItem>
-                    <SelectItem value="3 วัน">3 วัน</SelectItem>
-                    <SelectItem value="7 วัน">7 วัน</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-            <Input name="description" required defaultValue="การ์ดจริงพร้อมส่ง ตรวจสภาพแล้วก่อนลงขาย รูปตรงกับสินค้าที่ลงรายการ" placeholder="รายละเอียดสินค้าแบบครบถ้วน" />
-            <div className="flex flex-wrap gap-2">
-              {["Mint (M)", "Near Mint (NM)", "Excellent (EX)", "Good (G)", "Played (P)"].map((condition) => (
-                <Badge key={condition} variant={condition === "Near Mint (NM)" ? "default" : "outline"}>{condition}</Badge>
-              ))}
-            </div>
+  const lookupCard = async () => {
+    const normalizedCode = normalizeLookupCode(cardCode);
+
+    if (!new RegExp(cardCodePattern, "i").test(normalizedCode)) {
+      setLookupMessage("รหัสการ์ดต้องอยู่ในรูปแบบ OP01-121, EB01-001, PRB01-001 หรือ ST01-001");
+      return;
+    }
+
+    setLookupLoading(true);
+    setLookupMessage("กำลังค้นหาการ์ดจากคลังข้อมูล...");
+
+    try {
+      const response = await fetch(`/api/cards/lookup?code=${encodeURIComponent(normalizedCode)}&category=${category}`);
+      const result = (await response.json()) as CardLookupResponse;
+
+      if (!response.ok || !result.ok || !result.card) {
+        setLookupMessage(result.error?.message ?? "ไม่พบข้อมูลการ์ดนี้ในคลัง");
+        return;
+      }
+
+      setCardCode(result.card.cardCode);
+      setTitle(result.card.title);
+      setCategory(result.card.category);
+      setRarity(result.card.rarity);
+      setImageUrl(result.card.imageUrl ?? "");
+      setSetLabel(result.card.setLabel);
+      setLookupMessage(`พบข้อมูล: ${result.card.title} • ${result.card.setLabel} • ${result.card.rarity}`);
+    } catch {
+      setLookupMessage("เชื่อมต่อระบบค้นหาการ์ดไม่ได้ กรุณาลองใหม่");
+    } finally {
+      setLookupLoading(false);
+    }
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="w-full overflow-auto rounded-l-3xl p-0 sm:max-w-[560px] lg:max-w-[680px]">
+        <SheetHeader className="border-b bg-muted/40 px-6 py-5">
+          <SheetTitle className="text-2xl">ลงสินค้า</SheetTitle>
+          <SheetDescription>ใส่เพียงรหัสการ์ด ระบบจะดึงรายละเอียดจากคลังข้อมูลที่นำเข้าจาก data-cardgame.com ให้อัตโนมัติ</SheetDescription>
+        </SheetHeader>
+        <form action={onSubmit} className="flex flex-col gap-5 p-5">
+          <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
+            {["ค้นหาการ์ด", "กำหนดราคา", "ตรวจสอบ"].map((label, index) => (
+              <div key={label} className={cn("flex items-center gap-2", index === 0 && "text-primary")}>
+                <span className={cn("flex size-6 items-center justify-center rounded-full bg-muted", index === 0 && "bg-primary text-primary-foreground")}>{index + 1}</span>
+                <strong>{label}</strong>
+              </div>
+            ))}
           </div>
 
-          <div className="flex flex-col gap-3">
-            <div className="flex min-h-40 flex-col items-center justify-center gap-2 rounded-lg border border-dashed bg-muted/40 p-4 text-center text-sm text-muted-foreground">
-              <ImageUp />
-              <strong className="text-foreground">คลิกหรือวางไฟล์ที่นี่</strong>
-              <span>รองรับ JPG, PNG สูงสุด 10MB</span>
-            </div>
-            <div className="grid grid-cols-4 gap-2">
-              {["object-pos-1", "object-pos-2", "object-pos-3"].map((position) => (
-                <div
-                  key={position}
-                  className={cn("product-art aspect-square overflow-hidden rounded-md bg-muted", position)}
-                  role="img"
-                  aria-label="ตัวอย่างรูปการ์ด"
+          <div className="grid gap-5 lg:grid-cols-[1fr_220px]">
+            <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-2 gap-3">
+                <ModeButton active={mode === "auction"} title="ประมูล" detail="ผู้สนใจเสนอราคา" onClick={() => onModeChange("auction")} />
+                <ModeButton active={mode === "buy"} title="ซื้อเลย" detail="ราคาคงที่ทันที" onClick={() => onModeChange("buy")} />
+              </div>
+
+              <input type="hidden" name="game" value={CARD_GAME_NAME} />
+              <input type="hidden" name="imageUrl" value={imageUrl} />
+
+              <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+                <Input
+                  name="code"
+                  required
+                  value={cardCode}
+                  onChange={(event) => setCardCode(normalizeLookupCode(event.target.value))}
+                  pattern={cardCodePattern}
+                  placeholder="รหัสการ์ด เช่น OP01-121"
                 />
-              ))}
-              <div className="flex aspect-square items-center justify-center rounded-md bg-foreground text-background">+2</div>
-            </div>
-            <Input placeholder="วางลิงก์ YouTube" aria-label="วิดีโอสินค้า" />
-          </div>
-        </div>
+                <Button type="button" variant="secondary" onClick={lookupCard} disabled={lookupLoading}>
+                  {lookupLoading ? "กำลังค้นหา" : "ค้นหาการ์ด"}
+                </Button>
+              </div>
 
-        <Separator />
-        <SheetFooter className="p-0 sm:flex-row sm:justify-end">
-          <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
-            ยกเลิก
-          </Button>
-          <Button type="submit">ถัดไป</Button>
-        </SheetFooter>
-      </form>
-    </SheetContent>
-  </Sheet>
-);
+              <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary">
+                {lookupMessage}
+              </div>
+
+              <Input name="title" required value={title} onChange={(event) => setTitle(event.target.value)} placeholder="ชื่อการ์ด" />
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Select name="category" value={category} onValueChange={(value) => setCategory(value as ProductCategory)} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="เลือกชุดการ์ด" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {cardSetDefinitions.map((set) => (
+                        <SelectItem key={set.category} value={set.category}>{set.label}</SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                <Select name="rarity" value={rarity} onValueChange={(value) => setRarity(value as ProductRarity)} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="ระดับความหายาก" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {rarityOptions.map((item) => (
+                        <SelectItem key={item} value={item}>{item}</SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                <Input name="condition" required defaultValue="Near Mint (NM)" placeholder="สภาพการ์ด" />
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Input name="openingPrice" required type="number" min={100} defaultValue={1000} placeholder="ราคาเปิดประมูล" />
+                <Input name="bidIncrement" required type="number" min={10} defaultValue={50} placeholder="บิดเพิ่มครั้งละ" />
+                <Input name="buyNowPrice" required type="number" min={0} defaultValue={12750} placeholder="ราคาซื้อเลย" />
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input name="auctionEndsAt" type="datetime-local" defaultValue={getDefaultAuctionEnd()} />
+                <Select name="duration" defaultValue="กำหนดเอง">
+                  <SelectTrigger>
+                    <SelectValue placeholder="ระยะเวลา" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="กำหนดเอง">กำหนดวันสิ้นสุดเอง</SelectItem>
+                      <SelectItem value="30 นาที">30 นาที</SelectItem>
+                      <SelectItem value="3 วัน">3 วัน</SelectItem>
+                      <SelectItem value="7 วัน">7 วัน</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Input name="description" required defaultValue="การ์ดจริงพร้อมส่ง ตรวจสภาพแล้วก่อนลงขาย รูปตรงกับสินค้าที่ลงรายการ" placeholder="รายละเอียดสินค้าแบบครบถ้วน" />
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="default">{setLabel}</Badge>
+                {["Mint (M)", "Near Mint (NM)", "Excellent (EX)", "Good (G)", "Played (P)"].map((condition) => (
+                  <Badge key={condition} variant={condition === "Near Mint (NM)" ? "default" : "outline"}>{condition}</Badge>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <div className="flex min-h-56 flex-col items-center justify-center overflow-hidden rounded-lg border border-dashed bg-muted/40 p-4 text-center text-sm text-muted-foreground">
+                {imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={imageUrl} alt={title} className="max-h-52 rounded-lg object-contain" />
+                ) : (
+                  <>
+                    <ImageUp />
+                    <strong className="text-foreground">รูปการ์ดจะขึ้นอัตโนมัติ</strong>
+                    <span>ค้นหาจากรหัสการ์ดก่อนลงสินค้า</span>
+                  </>
+                )}
+              </div>
+              <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+                ระบบจะใช้รายละเอียดจากคลังการ์ดเป็นหลัก เพื่อให้ข้อมูลชื่อการ์ด ชุด รหัส ระดับ และรูปตรงกันทั้งเว็บ
+              </div>
+              <Input placeholder="วางลิงก์ YouTube" aria-label="วิดีโอสินค้า" />
+            </div>
+          </div>
+
+          <Separator />
+          <SheetFooter className="p-0 sm:flex-row sm:justify-end">
+            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
+              ยกเลิก
+            </Button>
+            <Button type="submit">สร้างรายการสินค้า</Button>
+          </SheetFooter>
+        </form>
+      </SheetContent>
+    </Sheet>
+  );
+};
 
 interface ModeButtonProps {
   active: boolean;

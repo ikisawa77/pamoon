@@ -3,6 +3,7 @@ import mariadb from "mariadb";
 
 const databaseUrl = process.env.DATABASE_URL ?? "mysql://root@127.0.0.1:3306/pamoon";
 const sourceUrl = process.env.DATA_CARDGAME_SOURCE_URL ?? "https://data-cardgame.com/prices_full.json";
+const cardGameName = "One Piece Card Game (Japanese)";
 
 const parseMariaDbUrl = (url) => {
   const parsed = new URL(url);
@@ -16,6 +17,45 @@ const parseMariaDbUrl = (url) => {
     charset: "utf8mb4",
   };
 };
+
+const makeSet = (prefix, index, name) => {
+  const number = String(index).padStart(2, "0");
+  const category = `${prefix}${number}`.toUpperCase();
+  const setCode = `${prefix.toUpperCase()}-${number}`;
+  const setName = name ?? `${prefix.toUpperCase()}-${number}`;
+
+  return {
+    category,
+    setCode,
+    setName,
+    label: `[${setCode}] ${setName}`,
+  };
+};
+
+const supportedSets = [
+  makeSet("op", 1, "Romance Dawn"),
+  makeSet("op", 2, "Paramount War"),
+  makeSet("op", 3, "Pillars of Strength"),
+  makeSet("op", 4, "Kingdoms of Intrigue"),
+  makeSet("op", 5, "Awakening of the New Era"),
+  makeSet("op", 6, "Wings of the Captain"),
+  makeSet("op", 7, "500 Years in the Future"),
+  makeSet("op", 8, "Two Legends"),
+  makeSet("op", 9, "Emperors in the New World"),
+  makeSet("op", 10, "Royal Blood"),
+  makeSet("op", 11, "A Fist of Divine Speed"),
+  makeSet("op", 12, "Legacy of the Master"),
+  makeSet("op", 13),
+  makeSet("op", 14),
+  makeSet("op", 15),
+  makeSet("eb", 1, "Memorial Collection"),
+  makeSet("eb", 2, "Anime 25th Collection"),
+  makeSet("eb", 3, "Extra Booster 03"),
+  makeSet("eb", 4, "Extra Booster 04"),
+  { category: "PRB01", setCode: "PRB-01", setName: "The Best", label: "[PRB-01] The Best" },
+  { category: "PRB02", setCode: "PRB-02", setName: "Premium Booster 02", label: "[PRB-02] Premium Booster 02" },
+  ...Array.from({ length: 30 }, (_, index) => makeSet("st", index + 1, `Starter Deck ${String(index + 1).padStart(2, "0")}`)),
+];
 
 const normalizeCardCode = (sourceKey) => sourceKey.toUpperCase().split("_")[0].trim();
 
@@ -45,11 +85,50 @@ const fetchPayload = async () => {
   return response.json();
 };
 
+const ensureSupportedSets = async (connection) => {
+  const gameId = "card_game_one_piece_jp";
+
+  await connection.query(
+    `INSERT INTO \`CardGame\` (\`id\`, \`name\`, \`isActive\`, \`createdAt\`, \`updatedAt\`)
+     VALUES (?, ?, 1, NOW(), NOW())
+     ON DUPLICATE KEY UPDATE \`isActive\` = 1, \`updatedAt\` = NOW()`,
+    [gameId, cardGameName],
+  );
+
+  const [game] = await connection.query("SELECT `id` FROM `CardGame` WHERE `name` = ? LIMIT 1", [cardGameName]);
+  const resolvedGameId = game?.id ?? gameId;
+
+  for (const [index, set] of supportedSets.entries()) {
+    await connection.query(
+      `INSERT INTO \`CardSet\`
+        (\`id\`, \`gameId\`, \`category\`, \`setCode\`, \`setName\`, \`label\`, \`isActive\`, \`sortOrder\`, \`createdAt\`, \`updatedAt\`)
+       VALUES (?, ?, ?, ?, ?, ?, 1, ?, NOW(), NOW())
+       ON DUPLICATE KEY UPDATE
+        \`gameId\` = VALUES(\`gameId\`),
+        \`setName\` = VALUES(\`setName\`),
+        \`label\` = VALUES(\`label\`),
+        \`isActive\` = 1,
+        \`sortOrder\` = VALUES(\`sortOrder\`),
+        \`updatedAt\` = NOW()`,
+      [
+        `card_set_${set.category.toLowerCase()}`,
+        resolvedGameId,
+        set.category,
+        set.setCode,
+        set.setName,
+        set.label,
+        index + 1,
+      ],
+    );
+  }
+};
+
 const main = async () => {
   const connection = await mariadb.createConnection(parseMariaDbUrl(databaseUrl));
 
   try {
     const payload = await fetchPayload();
+    await ensureSupportedSets(connection);
     await connection.query(
       "UPDATE `CardMaster` SET `createdAt` = NOW() WHERE `createdAt` = '0000-00-00 00:00:00'",
     );

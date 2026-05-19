@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiError, unknownError, validationError } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { lookupCardByCode } from "@/lib/card-lookup";
 import { CARD_GAME_NAME } from "@/lib/card-catalog";
 import { getCardSetDefinitionFromDb } from "@/lib/card-catalog.server";
 import { prisma } from "@/lib/db/prisma";
@@ -92,7 +93,13 @@ export const POST = async (request: NextRequest) => {
     }
 
     const input = parsed.data;
-    const cardSet = await getCardSetDefinitionFromDb(input.category);
+    const cardDetails = await lookupCardByCode(input.code, input.category);
+
+    if (!cardDetails) {
+      return apiError("ไม่พบรหัสการ์ดนี้ในคลังข้อมูล กรุณานำเข้าข้อมูลจาก data-cardgame.com ก่อนลงสินค้า", 404);
+    }
+
+    const cardSet = await getCardSetDefinitionFromDb(cardDetails.category);
     const sellerShop = await prisma.shop.findFirst({
       where: {
         ownerId: user.id,
@@ -116,16 +123,16 @@ export const POST = async (request: NextRequest) => {
     const product = await prisma.product.create({
       data: {
         sellerShopId: sellerShop.id,
-        title: input.title,
-        cardCode: input.code,
-        setCode: cardSet.setCode,
-        setName: cardSet.setName,
-        category: mapCategory(input.category),
-        rarity: mapRarity(input.rarity),
+        title: cardDetails.title,
+        cardCode: cardDetails.cardCode,
+        setCode: cardDetails.setCode || cardSet.setCode,
+        setName: cardDetails.setName || cardSet.setName,
+        category: mapCategory(cardDetails.category),
+        rarity: mapRarity(cardDetails.rarity),
         mode: mapMode(input.mode),
         conditionLabel: input.condition,
-        description: `${CARD_GAME_NAME}\n${cardSet.label}\n${input.description}`,
-        imageUrl: input.imageUrl,
+        description: `${CARD_GAME_NAME}\n${cardDetails.setLabel || cardSet.label}\n${input.description}`,
+        imageUrl: input.imageUrl ?? cardDetails.imageUrl,
         openingPriceCents: input.openingPrice * 100,
         currentPriceCents: priceCents,
         nextBidCents: input.mode === "auction" ? priceCents + bidIncrementCents : priceCents + 25000,
